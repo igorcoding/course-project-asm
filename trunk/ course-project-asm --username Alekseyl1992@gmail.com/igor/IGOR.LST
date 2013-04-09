@@ -1,0 +1,60 @@
+Turbo Assembler	 Version 3.1	    04/09/13 19:33:05	    Page 1
+igor.asm
+
+
+
+      1				     ;тестировочный проект (igor)
+      2
+      3	0000			     .model small
+      4	0000			     .data
+      5
+      6	0000			     .code
+      7				     org 100h
+      8	0100			     igorMain:
+      9
+     10	0100  E8 0000			     call exit
+     11
+     12
+     13	0103				     exit proc c uses AX
+1    14	0103  50			     PUSH    AX
+1    15	0104  B4 4C				     mov AH, 4Ch
+     16	0106  CD 21				     int 21h
+     17	0108  CD 20				     int 20h
+1    18	010A  58			     POP     AX
+1    19	010B  C3			     RET     00000h
+     20	010C				     exit endp
+     21
+     22				     end igorMain
+Turbo Assembler	 Version 3.1	    04/09/13 19:33:05	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "04/09/13"
+??FILENAME			  Text	 "igor	  "
+??TIME				  Text	 "19:33:05"
+??VERSION			  Number 030A
+@32BIT				  Text	 0
+@CODE				  Text	 _TEXT
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 IGOR
+@INTERFACE			  Text	 00H
+@MODEL				  Text	 2
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+EXIT				  Near	 _TEXT:0103
+IGORMAIN			  Near	 _TEXT:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+_TEXT				  16  010C Word	  Public  CODE
+
