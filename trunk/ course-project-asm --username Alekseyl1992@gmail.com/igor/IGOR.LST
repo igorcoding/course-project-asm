@@ -1,17 +1,17 @@
-Turbo Assembler	 Version 3.1	    04/16/13 17:24:21	    Page 1
+Turbo Assembler	 Version 3.1	    04/16/13 18:35:46	    Page 1
 igor.asm
 
 
 
       1				     ;тестировочный проект (igor)
       2	0000			     IgorPart segment 'code'
-      3				     assume CS:IgorPart, DS:IgorPart
+      3				     assume CS:IgorPart, DS:IgorPart, SS:IgorPart
       4				     org 100h
       5
       6
       7				     ;резидентная часть
       8	0100			     _start:
-      9	0100  EB 45 90			     jmp _loadTSR
+      9	0100  E9 0080			     jmp _loadTSR
      10
      11	0103  61 20 6B 65 79 20	68+	     msg1    DB	     'a	key has	been pressed', 13, 10, '$'
      12	      61 73 20 62 65 65	6E+
@@ -21,60 +21,99 @@ igor.asm
      16	      74 20 68 61 73 20	62+
      17	      65 65 6E 20 6C 6F	61+
      18	      64 65 64 0D 0A 24
-     19
-     20	0137  00000000			     old_09h DD	0
-     21
-     22	013B				     new_09h proc
-     23	013B  50				     push AX
-     24	013C  52				     push DX
+     19	0137  50 72 6F 67 72 61	6D+	     mess_load DB 'Program has already loaded !!!','$'
+     20	      20 68 61 73 20 61	6C+
+     21	      72 65 61 64 79 20	6C+
+     22	      6F 61 64 65 64 20	21+
+     23	      21 21 24
+     24	0156  00000000			     old_09h DD	0
      25
-     26	013D  B4 09				     mov AH, 09h
-     27	013F  BA 0103r				     mov DX, offset msg1
-     28	0142  CD 21				     int 21h
+     26	015A				     new_09h proc
+     27	015A  50				     push AX
+     28	015B  52				     push DX
      29
-     30						     ;pushf
-     31						     ;call DWORD ptr old_09h
-     32
-     33	0144  5A				     pop DX
-     34	0145  58				     pop AX
-     35	0146  CF				     iret
-     36	0147				     new_09h endp
-     37
-     38
-     39	0147				     _loadTSR:
-     40	0147  0E				     push CS
-     41	0148  1F				     pop DS
-     42						     ;===== int	09h loading =====;
-     43	0149  B8 3509				     mov AX, 3509h
-     44	014C  CD 21				     int 21h
-     45	014E  89 1E 0137r			     mov WORD ptr old_09h, BX
-     46	0152  8C 06 0139r			     mov WORD ptr old_09h + 2, ES
-     47	0156  B8 2509				     mov AX, 2509h
-     48	0159  BA 013Br				     lea DX, new_09h
-     49	015C  CD 21				     int 21h
-     50
-     51						     ;===== Terminate and stay resident	=====;
-     52	015E  B4 09				     mov AH, 09h
-     53	0160  BA 011Cr				     mov DX, offset msg2
-     54	0163  CD 21				     int 21h
+     30	015C  E4 60				     in	AL,60h
+     31	015E  3C 3B				     cmp AL,3Bh
+     32	0160  75 18				     jne _no
+     33
+     34	0162  33 C0				     xor AX, AX
+     35	0164  33 D2				     xor DX, DX
+     36
+     37	0166  B4 0A				     mov AH, 0Ah
+     38	0168  B0 21				     mov AL, '!'
+     39	016A  B9 0005				     mov CX, 5
+     40	016D  CD 10				     int 10h
+     41
+     42	016F  B4 03				     mov AH, 03h
+     43	0171  CD 10				     int 10h
+     44	0173  80 C2 05				     add DL, 5
+     45	0176  B4 02				     mov AH, 02h
+     46	0178  CD 10				     int 10h
+     47
+     48	017A					     _no:
+     49	017A  5A				     pop DX
+     50	017B  58				     pop AX
+     51	017C  9C				     pushf
+     52	017D  2E: FF 1E	0156r			     call CS:old_09h
+     53	0182  CF				     iret
+     54	0183				     new_09h endp
      55
-     56	0165  BA 0015				     mov DX, (_loadTSR - _start	+ 10Fh)	/ 16
-     57	0168  B8 3100				     mov AX, 3100h
-Turbo Assembler	 Version 3.1	    04/16/13 17:24:21	    Page 2
+     56
+     57	0183				     _loadTSR:
+Turbo Assembler	 Version 3.1	    04/16/13 18:35:46	    Page 2
 igor.asm
 
 
 
-     58	016B  CD 21				     int 21h
-     59
-     60	016D					     _exit:
-     61	016D  B8 4C00					     mov AX, 4C00h
-     62	0170  CD 21					     int 21h
+     58						     ;---------------Проверка загрузки программы в ОП--
+     59	0183  B8 FF00				     mov AX, 0FF00h
+     60	0186  CD 2F				     int 2Fh
+     61	0188  3C AA				     cmp AL, 0AAh
+     62	018A  74 37				     je	already_load
      63
-     64
-     65	0172			     IgorPart ends					      ;	конец кодового сегмента
-     66				     end _start							      ;	конец программы
-Turbo Assembler	 Version 3.1	    04/16/13 17:24:21	    Page 3
+     64						     ;---------------Установка текстового режима-------
+     65	018C  B4 03				     mov AH,03
+     66	018E  CD 10				     int 10h
+     67
+     68	0190  B4 00				     mov AH,00h
+     69	0192  B0 83				     mov AL,83h
+     70	0194  CD 10				     int 10h
+     71
+     72	0196  B4 02				     mov AH,02
+     73	0198  CD 10				     int 10h
+     74
+     75						     ;===== int	09h loading =====;
+     76	019A  B8 3509				     mov AX, 3509h
+     77	019D  CD 21				     int 21h
+     78	019F  2E: 89 1E	0156r			     mov WORD ptr CS:old_09h, BX
+     79	01A4  2E: 8C 06	0158r			     mov WORD ptr CS:old_09h + 2, ES
+     80	01A9  B8 2509				     mov AX, 2509h
+     81	01AC  BA 015Ar				     lea DX, new_09h
+     82	01AF  CD 21				     int 21h
+     83
+     84						     ;===== Terminate and stay resident	=====;
+     85	01B1  B4 09				     mov AH, 09h
+     86	01B3  BA 011Cr				     mov DX, offset msg2
+     87	01B6  CD 21				     int 21h
+     88
+     89	01B8  BA 0019				     mov DX, (_loadTSR - _start	+ 10Fh)	/ 16
+     90	01BB  B8 3100				     mov AX, 3100h
+     91	01BE  CD 21				     int 21h
+     92	01C0  EB 08 90				     jmp _exit
+     93
+     94	01C3					     already_load:
+     95	01C3  B4 09					     mov AH, 09h
+     96	01C5  BA 0137r					     mov DX, offset mess_load
+     97	01C8  CD 21					     int 21h
+     98
+     99	01CA					     _exit:
+    100	01CA  B8 4C00					     mov AX, 4C00h
+    101	01CD  CD 21					     int 21h
+    102
+    103
+    104	01CF			     IgorPart ends					      ;	конец кодового сегмента
+    105				     end _start							      ;	конец программы
+Turbo Assembler	 Version 3.1	    04/16/13 18:35:46	    Page 3
 Symbol Table
 
 
@@ -84,21 +123,24 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "04/16/13"
 ??FILENAME			  Text	 "igor	  "
-??TIME				  Text	 "17:24:21"
+??TIME				  Text	 "18:35:46"
 ??VERSION			  Number 030A
 @CPU				  Text	 0101H
 @CURSEG				  Text	 IGORPART
 @FILENAME			  Text	 IGOR
 @WORDSIZE			  Text	 2
+ALREADY_LOAD			  Near	 IGORPART:01C3
+MESS_LOAD			  Byte	 IGORPART:0137
 MSG1				  Byte	 IGORPART:0103
 MSG2				  Byte	 IGORPART:011C
-NEW_09H				  Near	 IGORPART:013B
-OLD_09H				  Dword	 IGORPART:0137
-_EXIT				  Near	 IGORPART:016D
-_LOADTSR			  Near	 IGORPART:0147
+NEW_09H				  Near	 IGORPART:015A
+OLD_09H				  Dword	 IGORPART:0156
+_EXIT				  Near	 IGORPART:01CA
+_LOADTSR			  Near	 IGORPART:0183
+_NO				  Near	 IGORPART:017A
 _START				  Near	 IGORPART:0100
 
 Groups & Segments		  Bit Size Align  Combine Class
 
-IGORPART			  16  0172 Para	  none	  CODE
+IGORPART			  16  01CF Para	  none	  CODE
 
