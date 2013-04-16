@@ -16,11 +16,20 @@ _start:
 	counter	  DW	0
 	isPrintingSignature	DW	0
 	printDelay	equ	5 ; в секундах
-	printPos	DW	0 ;0 - верх, 1 - центр, 2 - низ
+	printPos	DW	2 ;0 - верх, 1 - центр, 2 - низ
+	signatureLine1	DB	'Igor Latkin', 10
+	Line1_length 	equ	$-signatureLine1
+	signatureLine2	DB	'IU5-44', 10
+	Line2_length 	equ	$-signatureLine2
+	signatureLine3	DB	'Variant #0', 10
+	Line3_length 	equ	$-signatureLine3
+	
 	
 	new_09h proc
 		push AX
 		push DX
+		push CS
+		pop DS
 		
 		in AL,60h
 		cmp AL,3Bh
@@ -28,18 +37,7 @@ _start:
 		
 		mov AX, 1
 		mov isPrintingSignature, AX
-		
-		mov AH, 0Ah
-		mov AL, '&'
-		mov CX, 1
-		int 10h
-		
-		mov AH, 03h
-		int 10h
-		add DL, 1
-		mov AH, 02h
-		int 10h
-		
+
 		_no:
 		pop DX
 		pop AX
@@ -53,22 +51,10 @@ _start:
 		push CS
 		pop DS
 		
-		cmp isPrintingSignature, 0
-		je _notToPrint
+		cmp isPrintingSignature, 1
+		jne _notToPrint		
 		
-			mov AH, 0Ah
-			mov AL, '.'
-			mov CX, 1
-			int 10h
-			
-			mov AH, 03h
-			int 10h
-			add DL, 1
-			mov AH, 02h
-			int 10h
-		
-		
-			cmp counter, 91;printDelay*1000/55 + 1
+			cmp counter, printDelay*1000/55 + 1
 			je _letsPrint
 			
 			jmp _dontPrint
@@ -96,28 +82,104 @@ _start:
 		push AX
 		push DX
 		push CX
+		push BX
+		push ES
+		push SP
+		push BP
+		push SI
+		push DI
 
 		xor AX, AX
 		xor DX, DX
 		
-		mov AH, 0Ah
-		mov AL, '!'
-		mov CX, 5
-		int 10h
-		
 		mov AH, 03h
 		int 10h
-		add DL, 5
-		mov AH, 02h
-		int 10h
+		push DX
+		
+		cmp printPos, 0
+		je _printTop
+		
+		cmp printPos, 1
+		je _printCenter
+		
+		cmp printPos, 2
+		je _printBottom
+		
+		_printTop:
+			mov DH, 0
+			mov DL, 21h
+			jmp _actualPrint
+		
+		_printCenter:
+			mov DH, 9
+			mov DL, 21h
+			jmp _actualPrint
 			
+		_printBottom:
+			mov DH, 20
+			mov DL, 21h
+			jmp _actualPrint
+			
+		_actualPrint:	
+			call clrscr
+			
+			mov AH, 0Fh
+			int 10h
+	
+			push CS
+			pop ES
+			
+			lea BP, CS:signatureLine1
+			mov CX, Line1_length
+			mov BH, 0
+			mov BL, 0111b ;the color
+			mov AX, 1301h
+			int 10h
+			
+			lea BP, CS:signatureLine2
+			mov CX, Line2_length
+			mov BH, 0
+			mov BL, 0111b ;the color
+			sub DL, Line1_length-1
+			mov AX, 1301h
+			int 10h
+			
+			lea BP, CS:signatureLine3
+			mov CX, Line3_length
+			mov BH, 0
+			mov BL, 0111b ;the color
+			sub DL, Line2_length-1
+			mov AX, 1301h
+			int 10h
+			
+			pop DX
+			mov AH, 02h
+			int 10h
+			
+		pop DI
+		pop SI
+		pop BP
+		pop SP
+		pop ES
+		pop BX
 		pop CX
 		pop DX
 		pop AX
 		
 		ret
 	printSignature endp
-
+	
+	
+	clrscr proc c uses AX DX
+		mov AH, 00h       ;очистка
+		mov AL, 02h
+		int 10H       
+		
+		mov AH, 02h       ;функция установки курсора
+		mov DX, 00h       ;координаты 0,0
+		int 10h        	  ;установка курсора
+		ret
+	clrscr endp
 		
 	_loadTSR:
 		;---------------Проверка загрузки программы в ОП--
