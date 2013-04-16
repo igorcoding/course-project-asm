@@ -8,7 +8,6 @@ org 100h
 _start:
 	jmp _loadTSR
 	
-	msg1	  DB	'a key has been pressed', 13, 10, '$'
 	msg2	  DB	'resident has been loaded', 13, 10, '$'
 	mess_load DB    'Program has already loaded !!!','$'
 	old_09h   DD	0
@@ -33,12 +32,11 @@ _start:
 		
 		in AL,60h
 		cmp AL,3Bh
-		jne _no
+		jne _noF1
 		
-		mov AX, 1
-		mov isPrintingSignature, AX
+		mov isPrintingSignature, 1
 
-		_no:
+		_noF1:
 		pop DX
 		pop AX
 		pushf
@@ -169,6 +167,7 @@ _start:
 		ret
 	printSignature endp
 	
+
 	
 	clrscr proc c uses AX DX
 		mov AH, 00h       ;очистка
