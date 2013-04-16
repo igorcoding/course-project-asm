@@ -1,270 +1,132 @@
-;тестировочный проект (Alekseyl)
-
-;   === Начало программы: ===
-cseg segment
-assume CS:cseg,  DS:cseg,  SS:cseg,  ES:cseg
-org 100h
-
-_begin:
-    jmp _init ; На метку инициализации
-
-
-; === Обработчик 21h-ого прерывания ===
-int_21h_proc proc
-; ---
-	cmp AX,  9988h  ;Проверка на повторную загрузку?
-    jne _skip_test
-    xchg AH,  AL    ;Даем наш "отклик".
-    iret          ;И моментально выходим из прерывания...
-
-; ---
-_skip_test:
-    cmp AX,  9999h  ;Получаем информацию о нашем резиденте?
-    jne _work
-    mov AX,  9998h  ;Даем отклик и...
-
-    push CS       ;...передаем в ES сегмент резидента...
-    pop ES
-    mov DX,  offset int_21h_proc ;...в DX смещение...
-
-;...BX - смещение оригинального обработчика...
-    mov BX,  word ptr CS:[int_21h_vect]
-;...CX - сегмент оригинального обработчика...
-    mov CX,  word ptr CS:[int_21h_vect+2]
-    iret ;...и выходим из резидента.
-
-; ---
-_work:
-;замена int 21h(AH=2),  вывод Z,  вместо A
-    cmp AH, 02h
-    jne _call_original
-    cmp DL, 'a'
-    jne _call_original
-
-    mov DL, 'Z'
-
-_call_original:
-;Передаем управление предыдущему (оригинальному) обработчику
-
-    jmp dword ptr CS:[int_21h_vect]
-
-	int_21h_vect dd ?
-int_21h_proc endp
-
-
-
-
-;   === Инициализация (подготовка и настройка резидента) ===
-_init:
-       mov ES,  word ptr CS:[2Ch] ;Получим сегмент окружения DOS.
-       mov AH,  49h               ;Функция освобождения памяти.
-       int 21h                  ;Освобождаем память...
-
-       call Get_cmd  ;Проверим командную строку
-
-;Итак, 
-;Если ничего в командной строке не введено,  тогда пробуем установить резидент.
-       or AL, AL
-       jz Ok_cmd  ;
-
-;Если в командной строке введено '/u',  то пробуем удалить программу из памяти.
-       cmp AL, 1
-       je Remove  ;
-
-;В противном случае выведем сообщение о неверной командной строке
-;и завершимся...
-Bad_cmd:
-       mov DX, offset Mess_badcmd
-       call Out_mess
-       ret
-
-
-;На процедуру удаления программы из памяти...
-Remove:
-       jmp Remove_prog   ;
-
-
-;Устанавливаем резидент.
-Ok_cmd:
-       mov AX, 9988h ;Проверка на повторную загрузку.
-       int 21h
-       cmp AX, 8899h ;Получили наш отклик?
-       jne Next_step2  ;Нет. Тогда
-
-;Мы уже в памяти! Выведем соответствующую строку.
-       mov DX, offset Mess_memory
-       call Out_mess   ;Универсальная процедура вывода строки.
-       ret   ;Выйдем в DOS...
-
-Next_step2:
-; === 21h ===
-;Все готово для перехвата прерывания и установки резидента.
-
-       mov AX, 3521h
-       int 21h ;Получим и сохраним адрес (вектор) 21h прерывания
-       mov word ptr CS:[int_21h_vect], BX ;Смещение...
-       mov word ptr CS:[int_21h_vect+2], ES ;Сегмент...
-
-       mov AX, 2521h
-       mov DX, offset int_21h_proc
-       int 21h  ;"Повесим" нашу процедуру на 21h прерывание
-
-;Выведем сообщение,  что,  мол,  все в порядке!!! Программа загружена в память!
-       mov DX, offset Mess_hello
-       call Out_mess
-
-;Оставляем резидентную часть в памяти и выходим в DOS.
-       mov DX, offset _init
-       int 27h
-
-
-; ======= Пошли подпрограммы =======
-
-; --- Получим параметры в командной строке ---
-Get_cmd proc
-       mov SI, 80h   ;SI=смещение командной строки.
-       lodsb        ;Получим кол-во символов.
-       or AL, AL     ;Если 0 символов введено, 
-       jz Got_cmd   ;то все в порядке. 
-       cmp AL, 3     ;Иначе ввели не 3 символа? (пробел + /u)
-       jne No_string ;Да - на метку No_string 
-
-       inc SI       ;Теперь SI указывает на первый символ строки.
-
-Next_char:
-       loDSw       ;Получаем два символа
-       cmp AX, 'u/' ;Это /u? Помним,  что данные будут наоборот!!!
-       jne No_string ;Да - на выход... 
-
-       mov AL, 1    ;Сигнал того,  что пора удалять программу из памяти
-       ret
-
-Got_cmd:
-       xor AL, AL ;Сигнал того,  что ничего не ввели в командной строке
-       ret  ;Выходим из процедуры
-
-No_string:
-       mov AL, 3 ;Сигнал неверного ввода командной строки
-       ret  ;Выходим из процедуры
-Get_cmd endp
-
-
-; === Удаляем программу из памяти ===
-Remove_prog:
-;Прежде посылаем сигнал 21h-ому прерыванию,  т.е. 9999h.
-       mov AX, 9999h
-       int 21h
-
-;Если в ответ получаем 9998h,  то наш резидент "сидит" в памяти.
-       cmp AX, 9998h
-       je In_mem     ;Перейдем на соответствующую метку.
-
-;Если мы не получили отклик (9998h),  то наш резидент не загружен.
-;Сообщим об этом пользователю и выйдем в DOS.
-       mov DX, offset Mess_badmem
-       call Out_mess
-       ret
-
-
-;Итак,  наш резидент сидит в памяти.
-
-;Помимо отклика от нашего резидента мы также получаем (см. процедуру
-;обрабоки прерывания 21h выше):
-;* ES = сегмент,  в который загрузился резидент;
-;* DX = смещение резидента в данном сегменте;
-;* CX = сегмент оринигального (прежнего) обработчика прерывания 21h;
-;* BX = смещение оринигального (прежнего) обработчика прерывания 21h.
-
-In_mem:
-       push ES    ;Сохраним некоторые регистры в стеке, ..
-       push BX
-
-       mov Seg_21h, ES ;...а также в переменных.
-       mov Off_21h, DX
-
-       push BX
-       push CX
-
-       mov AX, 3521h
-       int 21h     ;Получим адрес обработчика 21h-прерывания.
-
-;Равен ли он тому,  куда загружен наш обработчик?
-;Если так,  то никто не "повис" над нами. Т.е. можно смело удалять нашу
-;программу из памяти.
-       mov AX, ES
-       cmp AX, Seg_21h
-       jne Cannot_remove
-
-       cmp BX, Off_21h
-       jne Cannot_remove
-
-;Вот и удаляем. Внимательно проследите,  что мы загружаем в регистры!
-       cli
-       mov AX, 2521h
-       pop DS
-       pop DX
-       int 21h
-
-       push CS
-       pop DS
-
-       mov AH, 49h
-       int 21h
-       sti
-
-;Программа удалена! Выведем сообщение об успешном удалении и вернемся в DOS.
-       mov DX, offset Remove_okmess
-
-Exit_prog:
-       call Out_mess
-       int 20h
-
-
-;Невозможно удалить программу,  т.к. кто-то "повис" над нами.
-Cannot_remove:
-;Сообщим о случившейся беде пользователю и выйдем в DOS...
-       mov DX, offset Mess_cantremove
-       jmp short Exit_prog
-
-Seg_21h dw ?
-Off_21h dw ?
-
-
-; === Вывод строки на экран ===
-Out_mess proc
-       mov AH, 9 ;Выводим строку. DX уже должен содержать ее адрес!
-       int 21h
-
-       mov AH, 9 ;Выводим сообщение типа "нажимте любую клавишу".
-       mov DX, offset Any_key
-       int 21h
-
-       xor AH, AH ;Ждем нажатия на клавишу...
-       int 16h
-
-       ret
-Out_mess endp
-
-
-;  === Сообщения ===
-Mess_hello db 'Резидент загружен!',  13,  10,  '$'
-
-Mess_memory db 13, 10, 'Программа уже загружена в память!', 13, 10
-            db 'Для ее удаления из памяти укажите /u в командной строке!', 13, 10, '$'
-
-Mess_badcmd db 13, 10, 'Неверно указан параметр в командной строке!!!', 13, 10
-            db 'Укажите /u,  если хотите удалить программу из памяти!', 13, 10, '$'
-
-Mess_badmem db 13, 10, 'Хм... Программы ведь нет в памяти!!! Как я могу ее удалить???', 13, 10, '$'
-
-Remove_okmess db 13, 10, 'Программа успешно удалена из памяти!!! Ура!!!', 13, 10, '$'
-
-Mess_cantremove db 13, 10, 'Не могу удалить резидент из памяти!!!', 13, 10, 13
-                db 'Дело в том,  что какая-то программа перехватила 21h-ое прерывание после того, ', 13, 10
-                db 'как загружен был RESID27.COM. Прежде необходимо удалить ее из памяти, ', 13, 10
-                db 'а потом уже удалять RESID27.COM!', 13, 10, '$'
-
-Any_key db 13, 'Для продолжения нажмите любую клавишу...$'
-
-cseg ends
-end _begin
+.model tiny
+.code
+.startup
+.386
+	jmp real_start  ;на начало программы
+    installed dw 8888 ;будем потом проверят,установлена прога или нет
+    ignored_chars db 'abcdefghijklmnopqrstuvwxyz' ; список игнорируемых символов
+	ignored_length dw 26
+	translate_from db 'F<DUL' ;символы для замены (АБВГД на англ. раскладке)
+	translate_to db 'АБВГД' ;символы на которые будет идти замена
+	translate_length dw 5 ;длина строки trasnlate_from
+    old_int9h_offset dw ?
+    old_int9h_segment dw ?
+	
+    ;новый обработчик
+    new_int9h proc far
+		; сохраняем все регистры
+		pusha ; push AX, BX, CX, DX
+		push es
+		push ds
+		push cs
+		pop ds
+		pushf ; push flags
+		
+		mov bx,0
+		mov dx,0	 
+		
+		call dword ptr cs:[old_int9h_offset]
+		mov ax, 40h ;буфер клавиатуры
+		mov es, ax
+		mov bx, es:[1ch] ;хвост буффера
+		cmp bl, 30 ;начало буфера клавиатуры
+		jne _continue
+		mov bl, 60 ;конец
+		_continue:
+		sub bl, 2 ;наш адрес
+		mov ax, es:[bx]; этот символ будем проверять
+		mov dx, ax
+		
+		mov si, 0
+		mov cx, ignored_length ;кол-во игнорируемых символов
+				
+	_check_ignored:
+		cmp dl,ignored_chars[si]
+		je _block
+		inc si
+	loop _check_ignored
+		jmp _check_translate
+		
+	_block:
+		mov es:[1ch], bx ;блокировка вывода символа
+		jmp _quit
+	
+	_check_translate:
+		mov si, 0
+		mov cx, translate_length ;кол-во игнорируемых символов
+		
+		_check_translate_loop:
+			cmp dl, translate_from[SI]
+			je _translate
+			inc SI
+		loop _check_translate_loop
+		jmp _quit
+		
+		_translate:
+			xor ax, ax
+			mov al, translate_to[SI]
+			mov es:[bx], ax	;подменяем выводимый символ
+		
+	_quit:
+		;восстанавливаем все регистры в обратном порядке
+		pop ds
+		pop es
+		popa
+		iret
+new_int9h endp  
+
+real_start:                         ; старт основной программы
+    mov ax,3509h                    ; получить в ES:BX вектор 09
+    int 21h                         ; прерывания
+    cmp word ptr es:installed,8888  ; проверка того, загружена ли уже программа
+    je remove                       ; если загружена - выгружаем
+    push es
+    mov ax, ds:[2Ch]                ; psp
+    mov es, ax
+    mov ah, 49h                     ; хватит памяти чтоб остаться
+    int 21h                         ; резидентом?
+    pop es
+    jc not_mem                      ; не хватило - выходим
+    mov cs:old_int9h_offset, bx         ; запомним старый адрес 09
+    mov cs:old_int9h_segment, es        ; прерывания
+    mov ax, 2509h                   ; установим вектор на 09
+    mov dx, offset new_int9h            ; прерывание
+    int 21h
+    mov dx, offset ok_installed         ; выводим что все ок
+    mov ah, 9
+    int 21h
+    mov dx, offset real_start       ; остаемся в памяти резидентом
+    int 27h                         ; и выходим
+    ; конец основной программы  
+remove:                             ; выгрузка программы из памяти
+    push es
+    push ds
+    mov dx, es:old_int9h_offset         ; возвращаем вектор прерывания
+    mov ds, es:old_int9h_segment        ; на место
+    mov ax, 2509h
+    int 21h
+    pop ds
+    pop es
+    mov ah, 49h                     ; освобождаем память
+    int 21h
+    jc not_remove                   ; не освободилась - ошибка
+    mov dx, offset removed_msg      ; все хорошо
+    mov ah, 9
+    int 21h
+    jmp exit                        ; выходим из программы
+not_remove:                         ; ошибка с высвобождением памяти.
+    mov dx, offset noremove_msg                     
+    mov ah, 9
+    int 21h
+    jmp exit
+not_mem:                            ; не хватает памяти, чтобы остаться резидентом
+    mov dx, offset nomem_msg
+    mov ah, 9
+    int 21h
+exit:                               ; выход
+    int 20h
+ok_installed db 'Installed$'
+nomem_msg db 'Out of memory$'
+removed_msg db 'Uninstalled$'
+noremove_msg db 'Error: cannot unload program$'
+end
