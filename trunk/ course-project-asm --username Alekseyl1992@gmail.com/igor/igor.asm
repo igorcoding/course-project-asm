@@ -8,10 +8,15 @@ org 100h
 _start:
 	jmp _loadTSR
 	
-	msg1	DB	'a key has been pressed', 13, 10, '$'
-	msg2	DB	'resident has been loaded', 13, 10, '$'
-	mess_load DB 'Program has already loaded !!!','$'
-	old_09h DD 0
+	msg1	  DB	'a key has been pressed', 13, 10, '$'
+	msg2	  DB	'resident has been loaded', 13, 10, '$'
+	mess_load DB    'Program has already loaded !!!','$'
+	old_09h   DD	0
+	old_1Ch   DD	0
+	counter	  DW	0
+	isPrintingSignature	DW	0
+	printDelay	equ	5 ; в секундах
+	printPos	DW	0 ;0 - верх, 1 - центр, 2 - низ
 	
 	new_09h proc
 		push AX
@@ -21,6 +26,77 @@ _start:
 		cmp AL,3Bh
 		jne _no
 		
+		mov AX, 1
+		mov isPrintingSignature, AX
+		
+		mov AH, 0Ah
+		mov AL, '&'
+		mov CX, 1
+		int 10h
+		
+		mov AH, 03h
+		int 10h
+		add DL, 1
+		mov AH, 02h
+		int 10h
+		
+		_no:
+		pop DX
+		pop AX
+		pushf
+		call CS:old_09h
+		iret
+	new_09h endp
+	
+	new_1Ch proc
+		push AX
+		push CS
+		pop DS
+		
+		cmp isPrintingSignature, 0
+		je _notToPrint
+		
+			mov AH, 0Ah
+			mov AL, '.'
+			mov CX, 1
+			int 10h
+			
+			mov AH, 03h
+			int 10h
+			add DL, 1
+			mov AH, 02h
+			int 10h
+		
+		
+			cmp counter, 91;printDelay*1000/55 + 1
+			je _letsPrint
+			
+			jmp _dontPrint
+			
+			_letsPrint:
+				mov AX, 0
+				mov isPrintingSignature, AX
+				mov counter, 0
+				call printSignature
+			
+			_dontPrint:
+			mov AX, counter
+			add AX, 1
+			mov counter, AX
+			
+		_notToPrint:
+		
+		pop AX
+		pushf
+		call CS:old_1Ch
+		iret
+	new_1Ch endp
+	
+	printSignature proc
+		push AX
+		push DX
+		push CX
+
 		xor AX, AX
 		xor DX, DX
 		
@@ -34,14 +110,13 @@ _start:
 		add DL, 5
 		mov AH, 02h
 		int 10h
-		
-		_no:
+			
+		pop CX
 		pop DX
 		pop AX
-		pushf
-		call CS:old_09h
-		iret
-	new_09h endp
+		
+		ret
+	printSignature endp
 
 		
 	_loadTSR:
@@ -69,6 +144,15 @@ _start:
 		mov WORD ptr CS:old_09h + 2, ES
 		mov AX, 2509h
 		lea DX, new_09h
+		int 21h
+		
+		;===== int 1Ch loading =====;
+		mov AX, 351Ch
+		int 21h
+		mov WORD ptr CS:old_1Ch, BX
+		mov WORD ptr CS:old_1Ch + 2, ES
+		mov AX, 251Ch
+		lea DX, new_1Ch
 		int 21h
 		
 		;===== Terminate and stay resident =====;	
