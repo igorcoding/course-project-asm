@@ -2,13 +2,20 @@
 .code
 .startup
 .386
-	jmp real_start  ;на начало программы
-    installed dw 8888 ;будем потом проверят,установлена прога или нет
+	jmp real_start  ; на начало программы
+    installed dw 8888 ; будем потом проверят,установлена прога или нет
     ignored_chars db 'abcdefghijklmnopqrstuvwxyz' ; список игнорируемых символов
 	ignored_length dw 26
+	ignore_enabled db 0 ; флаг функции игнорирования ввода
 	translate_from db 'F<DUL' ;символы для замены (АБВГД на англ. раскладке)
-	translate_to db 'АБВГД' ;символы на которые будет идти замена
-	translate_length dw 5 ;длина строки trasnlate_from
+	translate_to db 'АБВГД' ; символы на которые будет идти замена
+	translate_length dw 5 ; длина строки trasnlate_from
+	translate_enabled db 0 ; флаг функции перевода
+	
+	signaturePrintingEnabled db 0 ; флаг функции вывода информации об авторе
+	cursiveEnabled db 0 ; флаг перевода символа в курсив
+	
+	true equ 0ffh ; константа истинности
     old_int9h_offset dw ?
     old_int9h_segment dw ?
 	
@@ -20,11 +27,44 @@
 		push ds
 		push cs
 		pop ds
-		pushf ; push flags
+		pushf ; сохранить регистр флагов
 		
 		mov bx,0
-		mov dx,0	 
+		mov dx,0
 		
+		;проверка F1-F4
+		in al, 60h
+		sub al, 58
+		_F1:
+			cmp al, 1 ; F1
+			jne _F2
+			not ignore_enabled
+			jmp _skip_fx_test
+		_F2:
+			cmp al, 2 ; F2
+			jne _F3
+			not cursiveEnabled
+			jmp _skip_fx_test
+		_F3:
+			cmp al, 3 ; F3
+			jne _F4
+			not cursiveEnabled
+			jmp _skip_fx_test
+		_F4:
+			cmp al, 4 ; F4
+			jne _skip_fx_test
+			not cursiveEnabled
+			jmp _skip_fx_test
+			
+		
+		_skip_fx_test:
+		
+		jne _translate_or_ignore
+		;нажата клавиша F1
+		not ignore_enabled
+		
+		;игнорирование и перевод
+		_translate_or_ignore:
 		call dword ptr cs:[old_int9h_offset]
 		mov ax, 40h ;буфер клавиатуры
 		mov es, ax
@@ -37,6 +77,11 @@
 		mov ax, es:[bx]; этот символ будем проверять
 		mov dx, ax
 		
+		;включен ли режим блокировки ввода?
+		cmp ignore_enabled, true
+		jne _check_translate
+		
+		; да, включен
 		mov si, 0
 		mov cx, ignored_length ;кол-во игнорируемых символов
 				
@@ -52,6 +97,11 @@
 		jmp _quit
 	
 	_check_translate:
+		;включен ли режим перевода символов?
+		cmp translate_enabled, true
+		jne _quit
+		
+		; да, включен
 		mov si, 0
 		mov cx, translate_length ;кол-во игнорируемых символов
 		
