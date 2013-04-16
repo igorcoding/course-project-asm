@@ -1,31 +1,80 @@
-Turbo Assembler	 Version 3.1	    04/09/13 19:33:05	    Page 1
+Turbo Assembler	 Version 3.1	    04/16/13 17:24:21	    Page 1
 igor.asm
 
 
 
       1				     ;тестировочный проект (igor)
-      2
-      3	0000			     .model small
-      4	0000			     .data
+      2	0000			     IgorPart segment 'code'
+      3				     assume CS:IgorPart, DS:IgorPart
+      4				     org 100h
       5
-      6	0000			     .code
-      7				     org 100h
-      8	0100			     igorMain:
-      9
-     10	0100  E8 0000			     call exit
-     11
-     12
-     13	0103				     exit proc c uses AX
-1    14	0103  50			     PUSH    AX
-1    15	0104  B4 4C				     mov AH, 4Ch
-     16	0106  CD 21				     int 21h
-     17	0108  CD 20				     int 20h
-1    18	010A  58			     POP     AX
-1    19	010B  C3			     RET     00000h
-     20	010C				     exit endp
+      6
+      7				     ;резидентная часть
+      8	0100			     _start:
+      9	0100  EB 45 90			     jmp _loadTSR
+     10
+     11	0103  61 20 6B 65 79 20	68+	     msg1    DB	     'a	key has	been pressed', 13, 10, '$'
+     12	      61 73 20 62 65 65	6E+
+     13	      20 70 72 65 73 73	65+
+     14	      64 0D 0A 24
+     15	011C  72 65 73 69 64 65	6E+	     msg2    DB	     'resident has been	loaded', 13, 10, '$'
+     16	      74 20 68 61 73 20	62+
+     17	      65 65 6E 20 6C 6F	61+
+     18	      64 65 64 0D 0A 24
+     19
+     20	0137  00000000			     old_09h DD	0
      21
-     22				     end igorMain
-Turbo Assembler	 Version 3.1	    04/09/13 19:33:05	    Page 2
+     22	013B				     new_09h proc
+     23	013B  50				     push AX
+     24	013C  52				     push DX
+     25
+     26	013D  B4 09				     mov AH, 09h
+     27	013F  BA 0103r				     mov DX, offset msg1
+     28	0142  CD 21				     int 21h
+     29
+     30						     ;pushf
+     31						     ;call DWORD ptr old_09h
+     32
+     33	0144  5A				     pop DX
+     34	0145  58				     pop AX
+     35	0146  CF				     iret
+     36	0147				     new_09h endp
+     37
+     38
+     39	0147				     _loadTSR:
+     40	0147  0E				     push CS
+     41	0148  1F				     pop DS
+     42						     ;===== int	09h loading =====;
+     43	0149  B8 3509				     mov AX, 3509h
+     44	014C  CD 21				     int 21h
+     45	014E  89 1E 0137r			     mov WORD ptr old_09h, BX
+     46	0152  8C 06 0139r			     mov WORD ptr old_09h + 2, ES
+     47	0156  B8 2509				     mov AX, 2509h
+     48	0159  BA 013Br				     lea DX, new_09h
+     49	015C  CD 21				     int 21h
+     50
+     51						     ;===== Terminate and stay resident	=====;
+     52	015E  B4 09				     mov AH, 09h
+     53	0160  BA 011Cr				     mov DX, offset msg2
+     54	0163  CD 21				     int 21h
+     55
+     56	0165  BA 0015				     mov DX, (_loadTSR - _start	+ 10Fh)	/ 16
+     57	0168  B8 3100				     mov AX, 3100h
+Turbo Assembler	 Version 3.1	    04/16/13 17:24:21	    Page 2
+igor.asm
+
+
+
+     58	016B  CD 21				     int 21h
+     59
+     60	016D					     _exit:
+     61	016D  B8 4C00					     mov AX, 4C00h
+     62	0170  CD 21					     int 21h
+     63
+     64
+     65	0172			     IgorPart ends					      ;	конец кодового сегмента
+     66				     end _start							      ;	конец программы
+Turbo Assembler	 Version 3.1	    04/16/13 17:24:21	    Page 3
 Symbol Table
 
 
@@ -33,28 +82,23 @@ Symbol Table
 
 Symbol Name			  Type	 Value
 
-??DATE				  Text	 "04/09/13"
+??DATE				  Text	 "04/16/13"
 ??FILENAME			  Text	 "igor	  "
-??TIME				  Text	 "19:33:05"
+??TIME				  Text	 "17:24:21"
 ??VERSION			  Number 030A
-@32BIT				  Text	 0
-@CODE				  Text	 _TEXT
-@CODESIZE			  Text	 0
 @CPU				  Text	 0101H
-@CURSEG				  Text	 _TEXT
-@DATA				  Text	 DGROUP
-@DATASIZE			  Text	 0
+@CURSEG				  Text	 IGORPART
 @FILENAME			  Text	 IGOR
-@INTERFACE			  Text	 00H
-@MODEL				  Text	 2
-@STACK				  Text	 DGROUP
 @WORDSIZE			  Text	 2
-EXIT				  Near	 _TEXT:0103
-IGORMAIN			  Near	 _TEXT:0100
+MSG1				  Byte	 IGORPART:0103
+MSG2				  Byte	 IGORPART:011C
+NEW_09H				  Near	 IGORPART:013B
+OLD_09H				  Dword	 IGORPART:0137
+_EXIT				  Near	 IGORPART:016D
+_LOADTSR			  Near	 IGORPART:0147
+_START				  Near	 IGORPART:0100
 
 Groups & Segments		  Bit Size Align  Combine Class
 
-DGROUP				  Group
-  _DATA				  16  0000 Word	  Public  DATA
-_TEXT				  16  010C Word	  Public  CODE
+IGORPART			  16  0172 Para	  none	  CODE
 
