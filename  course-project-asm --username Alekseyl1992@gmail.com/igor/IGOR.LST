@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 3.1	    04/16/13 22:38:33	    Page 1
+Turbo Assembler	 Version 3.1	    04/17/13 16:42:38	    Page 1
 igor.asm
 
 
@@ -11,276 +11,293 @@ igor.asm
       6
       7				     ;резидентная часть
       8	0100			     _start:
-      9	0100  E9 0165			     jmp _loadTSR
+      9	0100  E9 0195			     jmp _loadTSR
      10
-     11	0103  61 20 6B 65 79 20	68+	     msg1      DB    'a	key has	been pressed', 13, 10, '$'
-     12	      61 73 20 62 65 65	6E+
-     13	      20 70 72 65 73 73	65+
-     14	      64 0D 0A 24
-     15	011C  72 65 73 69 64 65	6E+	     msg2      DB    'resident has been	loaded', 13, 10, '$'
-     16	      74 20 68 61 73 20	62+
-     17	      65 65 6E 20 6C 6F	61+
-     18	      64 65 64 0D 0A 24
-     19	0137  50 72 6F 67 72 61	6D+	     mess_load DB    'Program has already loaded !!!','$'
-     20	      20 68 61 73 20 61	6C+
-     21	      72 65 61 64 79 20	6C+
-     22	      6F 61 64 65 64 20	21+
-     23	      21 21 24
-     24	0156  00000000			     old_09h   DD    0
-     25	015A  00000000			     old_1Ch   DD    0
-     26	015E  0000			     counter   DW    0
-     27	0160  0000			     isPrintingSignature     DW	     0
-     28	      =0005			     printDelay	     equ     5 ; в секундах
-     29	0162  0002			     printPos	     DW	     2 ;0 - верх, 1 - центр, 2 - низ
-     30	0164  49 67 6F 72 20 4C	61+	     signatureLine1  DB	     'Igor Latkin', 10
-     31	      74 6B 69 6E 0A
-     32	      =000C			     Line1_length    equ     $-signatureLine1
-     33	0170  49 55 35 2D 34 34	0A	     signatureLine2  DB	     'IU5-44', 10
-     34	      =0007			     Line2_length    equ     $-signatureLine2
-     35	0177  56 61 72 69 61 6E	74+	     signatureLine3  DB	     'Variant #0', 10
-     36	      20 23 30 0A
-     37	      =000B			     Line3_length    equ     $-signatureLine3
-     38
-     39
-     40	0182				     new_09h proc
-     41	0182  50				     push AX
-     42	0183  52				     push DX
-     43	0184  0E				     push CS
-     44	0185  1F				     pop DS
-     45
-     46	0186  E4 60				     in	AL,60h
-     47	0188  3C 3B				     cmp AL,3Bh
-     48	018A  75 06				     jne _no
-     49
-     50	018C  B8 0001				     mov AX, 1
-     51	018F  A3 0160r				     mov isPrintingSignature, AX
+     11	0103  72 65 73 69 64 65	6E+	     msg2      DB    'resident has been	loaded', 13, 10, '$'
+     12	      74 20 68 61 73 20	62+
+     13	      65 65 6E 20 6C 6F	61+
+     14	      64 65 64 0D 0A 24
+     15	011E  50 72 6F 67 72 61	6D+	     mess_load DB    'Program has already loaded !!!','$'
+     16	      20 68 61 73 20 61	6C+
+     17	      72 65 61 64 79 20	6C+
+     18	      6F 61 64 65 64 20	21+
+     19	      21 21 24
+     20	013D  00000000			     old_09h   DD    0
+     21	0141  00000000			     old_1Ch   DD    0
+     22	0145  0000			     counter   DW    0
+     23	0147  0000			     isPrintingSignature     DW	     0
+     24	      =0002			     printDelay	     equ     2 ; в секундах
+     25	0149  0002			     printPos	     DW	     2 ;0 - верх, 1 - центр, 2 - низ
+     26
+     27	014B  B3 49 67 6F 72 20	4C+	     signatureLine1  DB	     179, 'Igor	Latkin', 179, 10
+     28	      61 74 6B 69 6E B3	0A
+     29	      =000E			     Line1_length    equ     $-signatureLine1
+     30	0159  B3 49 55 35 2D 34	34+	     signatureLine2  DB	     179, 'IU5-44     ',179,  10
+     31	      20 20 20 20 20 B3	0A
+     32	      =000E			     Line2_length    equ     $-signatureLine2
+     33	0167  B3 56 61 72 69 61	6E+	     signatureLine3  DB	     179, 'Variant #0 ', 179, 10
+     34	      74 20 23 30 20 B3	0A
+     35	      =000E			     Line3_length    equ     $-signatureLine3
+     36
+     37	0175  DA 0B*(C4) BF 0A		     tableTop		     DB	     218, Line1_length-3 dup (196), 191, 10
+     38	      =000E			     tableTop_length equ     $-tableTop
+     39	0183  C0 0B*(C4) D9 0A		     tableBottom	     DB	     192, Line1_length-3 dup (196), 217, 10
+     40	      =000E			     tableBottom_length	equ $-tableBottom
+     41
+     42
+     43	0191				     new_09h proc
+     44	0191  50				     push AX
+     45	0192  52				     push DX
+     46	0193  0E				     push CS
+     47	0194  1F				     pop DS
+     48
+     49	0195  E4 60				     in	AL,60h
+     50	0197  3C 3B				     cmp AL,3Bh
+     51	0199  75 06				     jne _noF1
      52
-     53	0192					     _no:
-     54	0192  5A				     pop DX
-     55	0193  58				     pop AX
-     56	0194  9C				     pushf
-     57	0195  2E: FF 1E	0156r			     call CS:old_09h
-Turbo Assembler	 Version 3.1	    04/16/13 22:38:33	    Page 2
+     53	019B  C7 06 0147r 0001			     mov isPrintingSignature, 1
+     54
+     55	01A1					     _noF1:
+     56	01A1  5A				     pop DX
+     57	01A2  58				     pop AX
+Turbo Assembler	 Version 3.1	    04/17/13 16:42:38	    Page 2
 igor.asm
 
 
 
-     58	019A  CF				     iret
-     59	019B				     new_09h endp
-     60
-     61	019B				     new_1Ch proc
-     62	019B  50				     push AX
-     63	019C  0E				     push CS
-     64	019D  1F				     pop DS
-     65
-     66	019E  83 3E 0160r 01			     cmp isPrintingSignature, 1
-     67	01A3  75 22				     jne _notToPrint
-     68
-     69	01A5  83 3E 015Er 5B				     cmp counter, printDelay*1000/55 + 1
-     70	01AA  74 03					     je	_letsPrint
-     71
-     72	01AC  EB 10 90					     jmp _dontPrint
+     58	01A3  9C				     pushf
+     59	01A4  2E: FF 1E	013Dr			     call CS:old_09h
+     60	01A9  CF				     iret
+     61	01AA				     new_09h endp
+     62
+     63	01AA				     new_1Ch proc
+     64	01AA  50				     push AX
+     65	01AB  0E				     push CS
+     66	01AC  1F				     pop DS
+     67
+     68	01AD  83 3E 0147r 01			     cmp isPrintingSignature, 1
+     69	01B2  75 22				     jne _notToPrint
+     70
+     71	01B4  83 3E 0145r 25				     cmp counter, printDelay*1000/55 + 1
+     72	01B9  74 03					     je	_letsPrint
      73
-     74	01AF						     _letsPrint:
-     75	01AF  B8 0000						     mov AX, 0
-     76	01B2  A3 0160r						     mov isPrintingSignature, AX
-     77	01B5  C7 06 015Er 0000					     mov counter, 0
-     78	01BB  E8 0011						     call printSignature
-     79
-     80	01BE						     _dontPrint:
-     81	01BE  A1 015Er					     mov AX, counter
-     82	01C1  05 0001					     add AX, 1
-     83	01C4  A3 015Er					     mov counter, AX
-     84
-     85	01C7					     _notToPrint:
+     74	01BB  EB 10 90					     jmp _dontPrint
+     75
+     76	01BE						     _letsPrint:
+     77	01BE  B8 0000						     mov AX, 0
+     78	01C1  A3 0147r						     mov isPrintingSignature, AX
+     79	01C4  C7 06 0145r 0000					     mov counter, 0
+     80	01CA  E8 0011						     call printSignature
+     81
+     82	01CD						     _dontPrint:
+     83	01CD  A1 0145r					     mov AX, counter
+     84	01D0  05 0001					     add AX, 1
+     85	01D3  A3 0145r					     mov counter, AX
      86
-     87	01C7  58				     pop AX
-     88	01C8  9C				     pushf
-     89	01C9  2E: FF 1E	015Ar			     call CS:old_1Ch
-     90	01CE  CF				     iret
-     91	01CF				     new_1Ch endp
-     92
-     93	01CF				     printSignature proc
-     94	01CF  50				     push AX
-     95	01D0  52				     push DX
-     96	01D1  51				     push CX
-     97	01D2  53				     push BX
-     98	01D3  06				     push ES
-     99	01D4  54				     push SP
-    100	01D5  55				     push BP
-    101	01D6  56				     push SI
-    102	01D7  57				     push DI
-    103
-    104	01D8  33 C0				     xor AX, AX
-    105	01DA  33 D2				     xor DX, DX
-    106
-    107	01DC  B4 03				     mov AH, 03h
-    108	01DE  CD 10				     int 10h
-    109	01E0  52				     push DX
-    110
-    111	01E1  83 3E 0162r 00			     cmp printPos, 0
-    112	01E6  74 0E				     je	_printTop
-    113
-    114	01E8  83 3E 0162r 01			     cmp printPos, 1
-Turbo Assembler	 Version 3.1	    04/16/13 22:38:33	    Page 3
+     87	01D6					     _notToPrint:
+     88
+     89	01D6  58				     pop AX
+     90	01D7  9C				     pushf
+     91	01D8  2E: FF 1E	0141r			     call CS:old_1Ch
+     92	01DD  CF				     iret
+     93	01DE				     new_1Ch endp
+     94
+     95	01DE				     printSignature proc
+     96	01DE  50				     push AX
+     97	01DF  52				     push DX
+     98	01E0  51				     push CX
+     99	01E1  53				     push BX
+    100	01E2  06				     push ES
+    101	01E3  54				     push SP
+    102	01E4  55				     push BP
+    103	01E5  56				     push SI
+    104	01E6  57				     push DI
+    105
+    106	01E7  33 C0				     xor AX, AX
+    107	01E9  33 D2				     xor DX, DX
+    108
+    109	01EB  B4 03				     mov AH, 03h
+    110	01ED  CD 10				     int 10h
+    111	01EF  52				     push DX
+    112
+    113	01F0  83 3E 0149r 00			     cmp printPos, 0
+    114	01F5  74 0E				     je	_printTop
+Turbo Assembler	 Version 3.1	    04/17/13 16:42:38	    Page 3
 igor.asm
 
 
 
-    115	01ED  74 0E				     je	_printCenter
-    116
-    117	01EF  83 3E 0162r 02			     cmp printPos, 2
-    118	01F4  74 0E				     je	_printBottom
-    119
-    120	01F6					     _printTop:
-    121	01F6  B6 00					     mov DH, 0
-    122	01F8  B2 21					     mov DL, 21h
-    123	01FA  EB 0F 90					     jmp _actualPrint
-    124
-    125	01FD					     _printCenter:
-    126	01FD  B6 09					     mov DH, 9
-    127	01FF  B2 21					     mov DL, 21h
-    128	0201  EB 08 90					     jmp _actualPrint
-    129
-    130	0204					     _printBottom:
-    131	0204  B6 14					     mov DH, 20
-    132	0206  B2 21					     mov DL, 21h
-    133	0208  EB 01 90					     jmp _actualPrint
-    134
-    135	020B					     _actualPrint:
-    136	020B  E8 0048					     call clrscr
-    137
-    138	020E  B4 0F					     mov AH, 0Fh
-    139	0210  CD 10					     int 10h
+    115
+    116	01F7  83 3E 0149r 01			     cmp printPos, 1
+    117	01FC  74 0E				     je	_printCenter
+    118
+    119	01FE  83 3E 0149r 02			     cmp printPos, 2
+    120	0203  74 0E				     je	_printBottom
+    121
+    122	0205					     _printTop:
+    123	0205  B6 00					     mov DH, 0
+    124	0207  B2 21					     mov DL, 21h
+    125	0209  EB 0F 90					     jmp _actualPrint
+    126
+    127	020C					     _printCenter:
+    128	020C  B6 09					     mov DH, 9
+    129	020E  B2 21					     mov DL, 21h
+    130	0210  EB 08 90					     jmp _actualPrint
+    131
+    132	0213					     _printBottom:
+    133	0213  B6 14					     mov DH, 20
+    134	0215  B2 21					     mov DL, 21h
+    135	0217  EB 01 90					     jmp _actualPrint
+    136
+    137	021A					     _actualPrint:
+    138	021A  B4 0F					     mov AH, 0Fh
+    139	021C  CD 10					     int 10h
     140
-    141	0212  0E					     push CS
-    142	0213  07					     pop ES
+    141	021E  0E					     push CS
+    142	021F  07					     pop ES
     143
-    144	0214  BD 0164r					     lea BP, CS:signatureLine1
-    145	0217  B9 000C					     mov CX, Line1_length
-    146	021A  B7 00					     mov BH, 0
-    147	021C  B3 07					     mov BL, 0111b ;the	color
-    148	021E  B8 1301					     mov AX, 1301h
-    149	0221  CD 10					     int 10h
+    144	0220  BD 0175r					     lea BP, CS:tableTop
+    145	0223  B9 000E					     mov CX, tableTop_length
+    146	0226  B7 00					     mov BH, 0
+    147	0228  B3 07					     mov BL, 0111b ;the	color
+    148	022A  B8 1301					     mov AX, 1301h
+    149	022D  CD 10					     int 10h
     150
-    151	0223  BD 0170r					     lea BP, CS:signatureLine2
-    152	0226  B9 0007					     mov CX, Line2_length
-    153	0229  B7 00					     mov BH, 0
-    154	022B  B3 07					     mov BL, 0111b ;the	color
-    155	022D  80 EA 0B					     sub DL, Line1_length-1
-    156	0230  B8 1301					     mov AX, 1301h
-    157	0233  CD 10					     int 10h
+    151	022F  BD 014Br					     lea BP, CS:signatureLine1
+    152	0232  B9 000E					     mov CX, Line1_length
+    153	0235  B7 00					     mov BH, 0
+    154	0237  B3 07					     mov BL, 0111b ;the	color
+    155	0239  80 EA 0D					     sub DL, tableTop_length-1
+    156	023C  B8 1301					     mov AX, 1301h
+    157	023F  CD 10					     int 10h
     158
-    159	0235  BD 0177r					     lea BP, CS:signatureLine3
-    160	0238  B9 000B					     mov CX, Line3_length
-    161	023B  B7 00					     mov BH, 0
-    162	023D  B3 07					     mov BL, 0111b ;the	color
-    163	023F  80 EA 06					     sub DL, Line2_length-1
-    164	0242  B8 1301					     mov AX, 1301h
-    165	0245  CD 10					     int 10h
+    159	0241  BD 0159r					     lea BP, CS:signatureLine2
+    160	0244  B9 000E					     mov CX, Line2_length
+    161	0247  B7 00					     mov BH, 0
+    162	0249  B3 07					     mov BL, 0111b ;the	color
+    163	024B  80 EA 0D					     sub DL, Line1_length-1
+    164	024E  B8 1301					     mov AX, 1301h
+    165	0251  CD 10					     int 10h
     166
-    167	0247  5A					     pop DX
-    168	0248  B4 02					     mov AH, 02h
-    169	024A  CD 10					     int 10h
-    170
-    171	024C  5F				     pop DI
-Turbo Assembler	 Version 3.1	    04/16/13 22:38:33	    Page 4
+    167	0253  BD 0167r					     lea BP, CS:signatureLine3
+    168	0256  B9 000E					     mov CX, Line3_length
+    169	0259  B7 00					     mov BH, 0
+    170	025B  B3 07					     mov BL, 0111b ;the	color
+    171	025D  80 EA 0D					     sub DL, Line2_length-1
+Turbo Assembler	 Version 3.1	    04/17/13 16:42:38	    Page 4
 igor.asm
 
 
 
-    172	024D  5E				     pop SI
-    173	024E  5D				     pop BP
-    174	024F  5C				     pop SP
-    175	0250  07				     pop ES
-    176	0251  5B				     pop BX
-    177	0252  59				     pop CX
-    178	0253  5A				     pop DX
-    179	0254  58				     pop AX
-    180
-    181	0255  C3				     ret
-    182	0256				     printSignature endp
-    183
-    184
-    185	0256				     clrscr proc c uses	AX DX
-1   186	0256  50			     PUSH    AX
-1   187	0257  52			     PUSH    DX
-1   188	0258  B4 00				     mov AH, 00h       ;очистка
-    189	025A  B0 02				     mov AL, 02h
-    190	025C  CD 10				     int 10H
-    191
-    192	025E  B4 02				     mov AH, 02h       ;функция	установки курсора
-    193	0260  BA 0000				     mov DX, 00h       ;координаты 0,0
-    194	0263  CD 10				     int 10h	       ;установка курсора
-1   195	0265  5A			     POP     DX
-1   196	0266  58			     POP     AX
-1   197	0267  C3			     RET     00000h
-    198	0268				     clrscr endp
+    172	0260  B8 1301					     mov AX, 1301h
+    173	0263  CD 10					     int 10h
+    174
+    175	0265  BD 0183r					     lea BP, CS:tableBottom
+    176	0268  B9 000E					     mov CX, tableBottom_length
+    177	026B  B7 00					     mov BH, 0
+    178	026D  B3 07					     mov BL, 0111b ;the	color
+    179	026F  80 EA 0D					     sub DL, Line3_length-1
+    180	0272  B8 1301					     mov AX, 1301h
+    181	0275  CD 10					     int 10h
+    182
+    183	0277  5A					     pop DX
+    184	0278  B4 02					     mov AH, 02h
+    185	027A  CD 10					     int 10h
+    186
+    187	027C  5F				     pop DI
+    188	027D  5E				     pop SI
+    189	027E  5D				     pop BP
+    190	027F  5C				     pop SP
+    191	0280  07				     pop ES
+    192	0281  5B				     pop BX
+    193	0282  59				     pop CX
+    194	0283  5A				     pop DX
+    195	0284  58				     pop AX
+    196
+    197	0285  C3				     ret
+    198	0286				     printSignature endp
     199
-    200	0268				     _loadTSR:
-    201						     ;---------------Проверка загрузки программы в ОП--
-    202	0268  B8 FF00				     mov AX, 0FF00h
-    203	026B  CD 2F				     int 2Fh
-    204	026D  3C AA				     cmp AL, 0AAh
-    205	026F  74 4E				     je	already_load
-    206
-    207						     ;---------------Установка текстового режима-------
-    208	0271  B4 03				     mov AH,03
-    209	0273  CD 10				     int 10h
-    210
-    211	0275  B4 00				     mov AH,00h
-    212	0277  B0 83				     mov AL,83h
-    213	0279  CD 10				     int 10h
-    214
-    215	027B  B4 02				     mov AH,02
-    216	027D  CD 10				     int 10h
-    217
-    218						     ;===== int	09h loading =====;
-    219	027F  B8 3509				     mov AX, 3509h
-    220	0282  CD 21				     int 21h
-    221	0284  2E: 89 1E	0156r			     mov WORD ptr CS:old_09h, BX
-    222	0289  2E: 8C 06	0158r			     mov WORD ptr CS:old_09h + 2, ES
-    223	028E  B8 2509				     mov AX, 2509h
-    224	0291  BA 0182r				     lea DX, new_09h
-    225	0294  CD 21				     int 21h
-    226
-    227						     ;===== int	1Ch loading =====;
-    228	0296  B8 351C				     mov AX, 351Ch
-Turbo Assembler	 Version 3.1	    04/16/13 22:38:33	    Page 5
+    200
+    201
+    202	0286				     clrscr proc c uses	AX DX
+1   203	0286  50			     PUSH    AX
+1   204	0287  52			     PUSH    DX
+1   205	0288  B4 00				     mov AH, 00h       ;очистка
+    206	028A  B0 02				     mov AL, 02h
+    207	028C  CD 10				     int 10H
+    208
+    209	028E  B4 02				     mov AH, 02h       ;функция	установки курсора
+    210	0290  BA 0000				     mov DX, 00h       ;координаты 0,0
+    211	0293  CD 10				     int 10h	       ;установка курсора
+1   212	0295  5A			     POP     DX
+1   213	0296  58			     POP     AX
+1   214	0297  C3			     RET     00000h
+    215	0298				     clrscr endp
+    216
+    217	0298				     _loadTSR:
+    218						     ;---------------Проверка загрузки программы в ОП--
+    219	0298  B8 FF00				     mov AX, 0FF00h
+    220	029B  CD 2F				     int 2Fh
+    221	029D  3C AA				     cmp AL, 0AAh
+    222	029F  74 4E				     je	already_load
+    223
+    224						     ;---------------Установка текстового режима-------
+    225	02A1  B4 03				     mov AH,03
+    226	02A3  CD 10				     int 10h
+    227
+    228	02A5  B4 00				     mov AH,00h
+Turbo Assembler	 Version 3.1	    04/17/13 16:42:38	    Page 5
 igor.asm
 
 
 
-    229	0299  CD 21				     int 21h
-    230	029B  2E: 89 1E	015Ar			     mov WORD ptr CS:old_1Ch, BX
-    231	02A0  2E: 8C 06	015Cr			     mov WORD ptr CS:old_1Ch + 2, ES
-    232	02A5  B8 251C				     mov AX, 251Ch
-    233	02A8  BA 019Br				     lea DX, new_1Ch
-    234	02AB  CD 21				     int 21h
-    235
-    236						     ;===== Terminate and stay resident	=====;
-    237	02AD  B4 09				     mov AH, 09h
-    238	02AF  BA 011Cr				     mov DX, offset msg2
-    239	02B2  CD 21				     int 21h
-    240
-    241	02B4  BA 0027				     mov DX, (_loadTSR - _start	+ 10Fh)	/ 16
-    242	02B7  B8 3100				     mov AX, 3100h
-    243	02BA  CD 21				     int 21h
-    244	02BC  EB 08 90				     jmp _exit
-    245
-    246	02BF					     already_load:
-    247	02BF  B4 09					     mov AH, 09h
-    248	02C1  BA 0137r					     mov DX, offset mess_load
-    249	02C4  CD 21					     int 21h
-    250
-    251	02C6					     _exit:
-    252	02C6  B8 4C00					     mov AX, 4C00h
-    253	02C9  CD 21					     int 21h
-    254
-    255
-    256	02CB			     IgorPart ends					      ;	конец кодового сегмента
-    257				     end _start							      ;	конец программы
-Turbo Assembler	 Version 3.1	    04/16/13 22:38:33	    Page 6
+    229	02A7  B0 83				     mov AL,83h
+    230	02A9  CD 10				     int 10h
+    231
+    232	02AB  B4 02				     mov AH,02
+    233	02AD  CD 10				     int 10h
+    234
+    235						     ;===== int	09h loading =====;
+    236	02AF  B8 3509				     mov AX, 3509h
+    237	02B2  CD 21				     int 21h
+    238	02B4  2E: 89 1E	013Dr			     mov WORD ptr CS:old_09h, BX
+    239	02B9  2E: 8C 06	013Fr			     mov WORD ptr CS:old_09h + 2, ES
+    240	02BE  B8 2509				     mov AX, 2509h
+    241	02C1  BA 0191r				     lea DX, new_09h
+    242	02C4  CD 21				     int 21h
+    243
+    244						     ;===== int	1Ch loading =====;
+    245	02C6  B8 351C				     mov AX, 351Ch
+    246	02C9  CD 21				     int 21h
+    247	02CB  2E: 89 1E	0141r			     mov WORD ptr CS:old_1Ch, BX
+    248	02D0  2E: 8C 06	0143r			     mov WORD ptr CS:old_1Ch + 2, ES
+    249	02D5  B8 251C				     mov AX, 251Ch
+    250	02D8  BA 01AAr				     lea DX, new_1Ch
+    251	02DB  CD 21				     int 21h
+    252
+    253						     ;===== Terminate and stay resident	=====;
+    254	02DD  B4 09				     mov AH, 09h
+    255	02DF  BA 0103r				     mov DX, offset msg2
+    256	02E2  CD 21				     int 21h
+    257
+    258	02E4  BA 002A				     mov DX, (_loadTSR - _start	+ 10Fh)	/ 16
+    259	02E7  B8 3100				     mov AX, 3100h
+    260	02EA  CD 21				     int 21h
+    261	02EC  EB 08 90				     jmp _exit
+    262
+    263	02EF					     already_load:
+    264	02EF  B4 09					     mov AH, 09h
+    265	02F1  BA 011Er					     mov DX, offset mess_load
+    266	02F4  CD 21					     int 21h
+    267
+    268	02F6					     _exit:
+    269	02F6  B8 4C00					     mov AX, 4C00h
+    270	02F9  CD 21					     int 21h
+    271
+    272
+    273	02FB			     IgorPart ends					      ;	конец кодового сегмента
+    274				     end _start							      ;	конец программы
+Turbo Assembler	 Version 3.1	    04/17/13 16:42:38	    Page 6
 Symbol Table
 
 
@@ -288,47 +305,50 @@ Symbol Table
 
 Symbol Name			  Type	 Value
 
-??DATE				  Text	 "04/16/13"
+??DATE				  Text	 "04/17/13"
 ??FILENAME			  Text	 "igor	  "
-??TIME				  Text	 "22:38:33"
+??TIME				  Text	 "16:42:38"
 ??VERSION			  Number 030A
 @CPU				  Text	 0101H
 @CURSEG				  Text	 IGORPART
 @FILENAME			  Text	 IGOR
 @WORDSIZE			  Text	 2
-ALREADY_LOAD			  Near	 IGORPART:02BF
-CLRSCR				  Near	 IGORPART:0256
-COUNTER				  Word	 IGORPART:015E
-ISPRINTINGSIGNATURE		  Word	 IGORPART:0160
-LINE1_LENGTH			  Number 000C
-LINE2_LENGTH			  Number 0007
-LINE3_LENGTH			  Number 000B
-MESS_LOAD			  Byte	 IGORPART:0137
-MSG1				  Byte	 IGORPART:0103
-MSG2				  Byte	 IGORPART:011C
-NEW_09H				  Near	 IGORPART:0182
-NEW_1CH				  Near	 IGORPART:019B
-OLD_09H				  Dword	 IGORPART:0156
-OLD_1CH				  Dword	 IGORPART:015A
-PRINTDELAY			  Number 0005
-PRINTPOS			  Word	 IGORPART:0162
-PRINTSIGNATURE			  Near	 IGORPART:01CF
-SIGNATURELINE1			  Byte	 IGORPART:0164
-SIGNATURELINE2			  Byte	 IGORPART:0170
-SIGNATURELINE3			  Byte	 IGORPART:0177
-_ACTUALPRINT			  Near	 IGORPART:020B
-_DONTPRINT			  Near	 IGORPART:01BE
-_EXIT				  Near	 IGORPART:02C6
-_LETSPRINT			  Near	 IGORPART:01AF
-_LOADTSR			  Near	 IGORPART:0268
-_NO				  Near	 IGORPART:0192
-_NOTTOPRINT			  Near	 IGORPART:01C7
-_PRINTBOTTOM			  Near	 IGORPART:0204
-_PRINTCENTER			  Near	 IGORPART:01FD
-_PRINTTOP			  Near	 IGORPART:01F6
+ALREADY_LOAD			  Near	 IGORPART:02EF
+CLRSCR				  Near	 IGORPART:0286
+COUNTER				  Word	 IGORPART:0145
+ISPRINTINGSIGNATURE		  Word	 IGORPART:0147
+LINE1_LENGTH			  Number 000E
+LINE2_LENGTH			  Number 000E
+LINE3_LENGTH			  Number 000E
+MESS_LOAD			  Byte	 IGORPART:011E
+MSG2				  Byte	 IGORPART:0103
+NEW_09H				  Near	 IGORPART:0191
+NEW_1CH				  Near	 IGORPART:01AA
+OLD_09H				  Dword	 IGORPART:013D
+OLD_1CH				  Dword	 IGORPART:0141
+PRINTDELAY			  Number 0002
+PRINTPOS			  Word	 IGORPART:0149
+PRINTSIGNATURE			  Near	 IGORPART:01DE
+SIGNATURELINE1			  Byte	 IGORPART:014B
+SIGNATURELINE2			  Byte	 IGORPART:0159
+SIGNATURELINE3			  Byte	 IGORPART:0167
+TABLEBOTTOM			  Byte	 IGORPART:0183
+TABLEBOTTOM_LENGTH		  Number 000E
+TABLETOP			  Byte	 IGORPART:0175
+TABLETOP_LENGTH			  Number 000E
+_ACTUALPRINT			  Near	 IGORPART:021A
+_DONTPRINT			  Near	 IGORPART:01CD
+_EXIT				  Near	 IGORPART:02F6
+_LETSPRINT			  Near	 IGORPART:01BE
+_LOADTSR			  Near	 IGORPART:0298
+_NOF1				  Near	 IGORPART:01A1
+_NOTTOPRINT			  Near	 IGORPART:01D6
+_PRINTBOTTOM			  Near	 IGORPART:0213
+_PRINTCENTER			  Near	 IGORPART:020C
+_PRINTTOP			  Near	 IGORPART:0205
 _START				  Near	 IGORPART:0100
 
 Groups & Segments		  Bit Size Align  Combine Class
 
-IGORPART			  16  02CB Para	  none	  CODE
+IGORPART			  16  02FB Para	  none	  CODE
 

@@ -14,14 +14,20 @@ _start:
 	old_1Ch   DD	0
 	counter	  DW	0
 	isPrintingSignature	DW	0
-	printDelay	equ	5 ; в секундах
+	printDelay	equ	2 ; в секундах
 	printPos	DW	2 ;0 - верх, 1 - центр, 2 - низ
-	signatureLine1	DB	'Igor Latkin', 10
+	
+	signatureLine1	DB	179, 'Igor Latkin', 179, 10
 	Line1_length 	equ	$-signatureLine1
-	signatureLine2	DB	'IU5-44', 10
+	signatureLine2	DB	179, 'IU5-44     ',179,  10
 	Line2_length 	equ	$-signatureLine2
-	signatureLine3	DB	'Variant #0', 10
+	signatureLine3	DB	179, 'Variant #0 ', 179, 10
 	Line3_length 	equ	$-signatureLine3
+	
+	tableTop		DB	218, Line1_length-3 dup (196), 191, 10
+	tableTop_length equ	$-tableTop
+	tableBottom		DB	192, Line1_length-3 dup (196), 217, 10
+	tableBottom_length equ $-tableBottom
 	
 	
 	new_09h proc
@@ -119,18 +125,24 @@ _start:
 			jmp _actualPrint
 			
 		_actualPrint:	
-			call clrscr
-			
 			mov AH, 0Fh
 			int 10h
 	
 			push CS
 			pop ES
 			
+			lea BP, CS:tableTop
+			mov CX, tableTop_length
+			mov BH, 0
+			mov BL, 0111b ;the color
+			mov AX, 1301h
+			int 10h
+			
 			lea BP, CS:signatureLine1
 			mov CX, Line1_length
 			mov BH, 0
 			mov BL, 0111b ;the color
+			sub DL, tableTop_length-1
 			mov AX, 1301h
 			int 10h
 			
@@ -147,6 +159,14 @@ _start:
 			mov BH, 0
 			mov BL, 0111b ;the color
 			sub DL, Line2_length-1
+			mov AX, 1301h
+			int 10h
+			
+			lea BP, CS:tableBottom
+			mov CX, tableBottom_length
+			mov BH, 0
+			mov BL, 0111b ;the color
+			sub DL, Line3_length-1
 			mov AX, 1301h
 			int 10h
 			
