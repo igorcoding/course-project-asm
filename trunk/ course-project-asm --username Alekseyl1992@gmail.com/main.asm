@@ -129,17 +129,17 @@ code segment	'code'
 	; блокируем
 	_block:
 		mov ES:[1Ch], BX ;блокировка ввода символа
-		; если по варианту нужно не блокировать ввод символа,
-		; а заменять одни символы другими,
-		; замените строку выше строкой
-		; mov ES:[BX], AX
-		; на месте AX может быть '*' для замены всех символов множества ignoredChars на звёздочки
-		; или, для перевода одних символов в другие - завести массив
-		; replaceWith DB '...', где перечислить символы, на которые пойдёт замена
-		; и раскомментировать строки ниже:
-		;   xor AX, AX
-		; 	mov AL, replaceWith[SI]
-		;	mov ES:[BX], AX	; замена символа
+		;;; если по варианту нужно не блокировать ввод символа,
+		;;; а заменять одни символы другими,
+		;;; замените строку выше строкой
+		;;; mov ES:[BX], AX
+		;;; на месте AX может быть '*' для замены всех символов множества ignoredChars на звёздочки
+		;;; или, для перевода одних символов в другие - завести массив
+		;;; replaceWith DB '...', где перечислить символы, на которые пойдёт замена
+		;;; и раскомментировать строки ниже:
+		;;; xor AX, AX
+		;;; 	mov AL, replaceWith[SI]
+		;;;	mov ES:[BX], AX	; замена символа
 		jmp _quit
 	
 	_check_translate:
@@ -163,7 +163,7 @@ code segment	'code'
 			xor AX, AX
 			mov AL, translateTo[SI]
 			mov ES:[BX], AX	; замена символа
-			; замените AX на '*', если нужно заменять символы на звёздочку
+			;;; замените AX на '*', если нужно заменять символы на звёздочку
 			
 	_quit:
 		; восстанавливаем все регистры
@@ -400,9 +400,14 @@ _initTSR:                         	; старт резидента
 	
 	removingOnParameter:
 	cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
-     je _remove                       ; если загружена - выгружаем
+     je _remove                       
 	 
 	 no_removing_now:
+	 
+	 ;;; Если по варианту необходимо выгружать резидент по повторному запуску, то комментируем обе строки;
+	 ;;; если необходимо выгружать по параметру коммандной строки, то оставляем их
+	 cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
+	 je _alreadyInstalled
     
 	cmp specialParamFlag, 2		; если была выведена справка
 	je _exit						; просто выходим
@@ -440,6 +445,11 @@ _initTSR:                         	; старт резидента
 _remove:                             ; выгрузка программы из памяти
 	call unload
 	jmp _exit
+_alreadyInstalled:
+	mov AH, 09h
+	lea DX, alreadyInstalledMsg
+	int 21h
+	jmp _exit
 _notMem:                            ; не хватает памяти, чтобы остаться резидентом
     mov DX, offset noMemMsg
     mov AH, 9
@@ -476,6 +486,7 @@ _notRemove:                         ; ошибка с высвобождением памяти.
 unload endp
 
 installedMsg DB 'Installed$'
+alreadyInstalledMsg DB 'Already Installed$'
 noMemMsg DB 'Out of memory$'
 removedMsg DB 'Uninstalled$'
 noRemoveMsg DB 'Error: cannot unload program$'
