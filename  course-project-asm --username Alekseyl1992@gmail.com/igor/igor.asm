@@ -8,32 +8,32 @@ org 100h
 _start:
 	jmp _loadTSR
 	
-	msg2	  				DB	'resident has been loaded', 13, 10, '$'
+	msg2	  					DB	'resident has been loaded', 13, 10, '$'
 	mess_load 				DB  'Program has already loaded !!!','$'
 	old_09h   				DD	0
 	old_1Ch   				DD	0
 	counter	  				DW	0
 	isPrintingSignature		DW	0
 	printDelay				equ	2 ; задержка перед выводом "подписи" в секундах
-	printPos				DW	1 ; положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
+	printPos					DW	1 ; положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
 	
 	;;;;заменить на собственные данные. формирование таблицы идет по строке бОльшей длины.
 	;;;;можно формировать через код, но это слишком сильно увеличивает как объем работы, так и объем самого кода
 	signatureLine1			DB	179, 'Игорь Латкин', 179, 10
-	Line1_length 			equ	$-signatureLine1
+	Line1_length 				equ	$-signatureLine1
 	signatureLine2			DB	179, 'ИУ5-44      ',179,  10
-	Line2_length 			equ	$-signatureLine2
+	Line2_length 				equ	$-signatureLine2
 	signatureLine3			DB	179, 'Вариант #0  ', 179, 10
-	Line3_length 			equ	$-signatureLine3
+	Line3_length 				equ	$-signatureLine3
 	helpMsg					DB	10, 13, 'some help', 10, 13
 	helpMsg_length			equ $-helpMsg
-	errorParamMsg			DB	10, 13, 'some error on param', 10, 13
-	errorParamMsg_length	equ	$-errorParamMsg
+	errorParamMsg				DB	10, 13, 'some error on param', 10, 13
+	errorParamMsg_length		equ	$-errorParamMsg
 	tmpMsg					DB	10, 13, 'temp message', 10, 13
-	tmpMsg_length			equ $-tmpMsg
+	tmpMsg_length				equ  $-tmpMsg
 	
-	tableTop				DB	218, Line1_length-3 dup (196), 191, 10
-	tableTop_length 		equ	$-tableTop
+	tableTop					DB	218, Line1_length-3 dup (196), 191, 10
+	tableTop_length 			equ	$-tableTop
 	tableBottom				DB	192, Line1_length-3 dup (196), 217, 10
 	tableBottom_length 		equ $-tableBottom
 	
@@ -208,20 +208,17 @@ _start:
 		lodsb        					;Получим кол-во символов.
 		or AL, AL     				;Если 0 символов введено, 
 		jz Got_cmd   					;то все в порядке. 
-		;cmp AL, 3     				;Иначе ввели не 3 символа? (пробел + /X)
-		;jne No_string 				;Да - на метку No_string 
 
 		inc SI       					;Теперь SI указывает на первый символ строки.
 
 		Next_char:
 			lodsw       				;Получаем два символа
 			cmp AX, '?/' 				;Это '/?' ? Данные будут наоборот!
-			je _question 				;Да - на выход... 
+			je _question
 			cmp AX, 'u/'
 			je _finishTSR
 			
 			jmp No_string
-			;mov AL, 1    			;Сигнал того,  что пора удалять программу из памяти
 			ret
 
 		Got_cmd:
@@ -242,6 +239,7 @@ _start:
 				mov AX, 1301h
 				int 10h
 			; конец вывода строки помощи
+			inc SI
 			jmp Next_char
 		
 		_finishTSR:
@@ -255,6 +253,7 @@ _start:
 				mov AX, 1301h
 				int 10h
 			; конец вывода строки
+			inc SI
 			jmp Next_char
 		
 		
