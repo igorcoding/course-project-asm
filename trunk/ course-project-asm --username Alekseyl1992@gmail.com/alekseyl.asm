@@ -1,7 +1,9 @@
-.model tiny
-.code
-.startup
-.386
+.model	tiny
+code segment	'code'
+	assume	CS:code, DS:code
+	org	100h
+	_start:
+	
 	jmp real_start  ; на начало программы
     installed dw 8888 ; будем потом проверят,установлена прога или нет
     ignored_chars db 'abcdefghijklmnopqrstuvwxyz' ; список игнорируемых символов
@@ -18,24 +20,23 @@
 	true equ 0ffh ; константа истинности
     old_int9h_offset dw ?
     old_int9h_segment dw ?
+	old_09h dd 0
 	
     ;новый обработчик
     new_int9h proc far
-		; сохраняем все регистры
-		pusha ; push AX, BX, CX, DX
-		push es
-		push ds
-		push cs
-		pop ds
-		pushf ; сохранить регистр флагов
-		
-		mov bx,0
-		mov dx,0
-		
+		push SI
+		push	AX
+		push	BX
+		push	CX
+		push	DX
+		push	ES
+		push	DS
+		push	CS
+		pop	DS
 
 		;проверка F1-F4
-		in al, 60h
-		sub al, 58
+		in AL, 60h
+		sub AL, 58
 		_F1:
 			cmp al, 1 ; F1
 			jne _F2
@@ -60,18 +61,21 @@
 		
 		;игнорирование и перевод
 		_translate_or_ignore:
-		call dword ptr cs:[old_int9h_offset]
-		mov ax, 40h ;буфер клавиатуры
-		mov es, ax
-		mov bx, es:[1ch] ;хвост буффера
-		cmp bl, 30 ;начало буфера клавиатуры
-		jne _continue
-		mov bl, 60 ;конец
-		_continue:
-		sub bl, 2 ;наш адрес
-		mov ax, es:[bx]; этот символ будем проверять
-		mov dx, ax		
 		
+		pushf
+		call dword ptr cs:[old_int9h_offset]
+		mov	AX, 40h 	;40h-сегмент,где хранятся флаги сост-я клавы,кольц. буфер ввода 
+		mov	ES, AX
+		mov	BX, ES:[1Ch]	;адрес хвоста
+		dec	BX	;сместимся назад к последнему
+		dec	BX	;введённому символу
+		cmp	BX, 1Eh	;не вышли ли мы за пределы буфера?
+		jae	go
+		mov	BX, 3Ch	;хвост вышел за пределы буфера, значит последний введённый символ
+				;находится	в конце буфера
+
+	go:		
+		mov DX, ES:[BX] ; в DX 0 введённый символ
 		;включен ли режим блокировки ввода?
 		cmp ignore_enabled, true
 		jne _check_translate
@@ -92,13 +96,13 @@
 		jmp _quit
 	
 	_check_translate:
-		;включен ли режим перевода символов?
+		;включен ли режим перевода?
 		cmp translate_enabled, true
 		jne _quit
 		
 		; да, включен
 		mov si, 0
-		mov cx, translate_length ;кол-во переводимых символов
+		mov cx, translate_length ;кол-во символов для перевода
 		
 		_check_translate_loop:
 			cmp dl, translate_from[SI]
@@ -110,13 +114,16 @@
 		_translate:		
 			xor ax, ax
 			mov al, translate_to[SI]
-			mov es:[bx], ax	;подменяем выводимый символ
+			mov es:[bx], ax	; замена символа
 			
 	_quit:
-		;восстанавливаем все регистры в обратном порядке
-		pop ds
-		pop es
-		popa
+		pop	DS
+		pop	ES
+		pop DX
+		pop CX
+		pop	BX
+		pop	AX
+		pop SI
 		iret
 new_int9h endp  
 
@@ -132,8 +139,8 @@ real_start:                         ; старт основной программы
     int 21h                         ; резидентом?
     pop es
     jc not_mem                      ; не хватило - выходим
-    mov cs:old_int9h_offset, bx         ; запомним старый адрес 09
-    mov cs:old_int9h_segment, es        ; прерывания
+	mov	word ptr CS:old_int9h_offset, BX
+	mov	word ptr CS:old_int9h_segment, ES
     mov ax, 2509h                   ; установим вектор на 09
     mov dx, offset new_int9h            ; прерывание
     int 21h
@@ -174,4 +181,6 @@ ok_installed db 'Installed$'
 nomem_msg db 'Out of memory$'
 removed_msg db 'Uninstalled$'
 noremove_msg db 'Error: cannot unload program$'
-end
+
+code ends
+end _start
