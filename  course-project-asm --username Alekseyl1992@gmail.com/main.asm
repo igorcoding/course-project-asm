@@ -10,22 +10,24 @@ code segment	'code'
 	org	100h
 	_start:
 	
-	jmp _initTSR  ; на начало программы
-    installed DW 8888 ; будем потом проверят,установлена прога или нет
-    ignoredChars DB 'abcdefghijklmnopqrstuvwxyz' ; список игнорируемых символов
-	ignoredLength DW 26
-	ignoreEnabled DB 0 ; флаг функции игнорирования ввода
-	translateFrom DB 'F<DUL' ;символы для замены (АБВГД на англ. раскладке)
-	translateTo DB 'АБВГД' ; символы на которые будет идти замена
-	translateLength DW 5 ; длина строки trasnlate_from
-	translateEnabled DB 0 ; флаг функции перевода
+	jmp _initTSR ; на начало программы
 	
-	signaturePrintingEnabled DB 0 ; флаг функции вывода информации об авторе
-	cursiveEnabled DB 0 ; флаг перевода символа в курсив
+	; данные
+    installed					DW	8888							; будем потом проверят,установлена прога или нет
+    ignoredChars 				DB	'abcdefghijklmnopqrstuvwxyz'	; список игнорируемых символов
+	ignoredLength 				DW	26								; длина строки ignoredChars
+	ignoreEnabled 				DB	0								; флаг функции игнорирования ввода
+	translateFrom 				DB	'F<DUL'							; символы для замены (АБВГД на англ. раскладке)
+	translateTo 				DB	'АБВГД'							; символы на которые будет идти замена
+	translateLength				DW	5								; длина строки trasnlateFrom
+	translateEnabled			DB	0								; флаг функции перевода
 	
-	true equ 0ffh ; константа истинности
-    old_int9hOffset DW ? ; адрес старого обработчика int 9h
-    old_int9hSegment DW ? ; сегмент старого обработчика int 9h
+	signaturePrintingEnabled 	DB	0								; флаг функции вывода информации об авторе
+	cursiveEnabled 				DB	0								; флаг перевода символа в курсив
+	
+	true 						equ	0ffh							; константа истинности
+    old_int9hOffset 			DW	?								; адрес старого обработчика int 9h
+    old_int9hSegment 			DW	?								; сегмент старого обработчика int 9h
 	
     ;новый обработчик
     new_int9h proc far
