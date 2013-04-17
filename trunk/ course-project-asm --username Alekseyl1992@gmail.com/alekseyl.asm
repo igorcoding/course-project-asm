@@ -32,36 +32,31 @@
 		mov bx,0
 		mov dx,0
 		
+
 		;проверка F1-F4
 		in al, 60h
 		sub al, 58
 		_F1:
 			cmp al, 1 ; F1
 			jne _F2
-			not ignore_enabled
-			jmp _skip_fx_test
+			not signaturePrintingEnabled
+			jmp _translate_or_ignore
 		_F2:
 			cmp al, 2 ; F2
 			jne _F3
 			not cursiveEnabled
-			jmp _skip_fx_test
+			jmp _translate_or_ignore
 		_F3:
 			cmp al, 3 ; F3
 			jne _F4
-			not cursiveEnabled
-			jmp _skip_fx_test
+			not translate_enabled
+			jmp _translate_or_ignore
 		_F4:
 			cmp al, 4 ; F4
-			jne _skip_fx_test
-			not cursiveEnabled
-			jmp _skip_fx_test
+			jne _translate_or_ignore
+			not ignore_enabled
+			jmp _translate_or_ignore
 			
-		
-		_skip_fx_test:
-		
-		jne _translate_or_ignore
-		;нажата клавиша F1
-		not ignore_enabled
 		
 		;игнорирование и перевод
 		_translate_or_ignore:
@@ -112,11 +107,11 @@
 		loop _check_translate_loop
 		jmp _quit
 		
-		_translate:
+		_translate:		
 			xor ax, ax
 			mov al, translate_to[SI]
 			mov es:[bx], ax	;подменяем выводимый символ
-		
+			
 	_quit:
 		;восстанавливаем все регистры в обратном порядке
 		pop ds
