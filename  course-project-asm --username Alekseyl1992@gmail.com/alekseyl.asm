@@ -70,7 +70,7 @@
 		_continue:
 		sub bl, 2 ;наш адрес
 		mov ax, es:[bx]; этот символ будем проверять
-		mov dx, ax
+		mov dx, ax		
 		
 		;включен ли режим блокировки ввода?
 		cmp ignore_enabled, true
@@ -98,7 +98,7 @@
 		
 		; да, включен
 		mov si, 0
-		mov cx, translate_length ;кол-во игнорируемых символов
+		mov cx, translate_length ;кол-во переводимых символов
 		
 		_check_translate_loop:
 			cmp dl, translate_from[SI]
