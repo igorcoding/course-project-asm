@@ -4,58 +4,59 @@ code segment	'code'
 	org	100h
 	_start:
 	
-	jmp real_start  ; на начало программы
-    installed dw 8888 ; будем потом проверят,установлена прога или нет
-    ignored_chars db 'abcdefghijklmnopqrstuvwxyz' ; список игнорируемых символов
-	ignored_length dw 26
-	ignore_enabled db 0 ; флаг функции игнорирования ввода
-	translate_from db 'F<DUL' ;символы для замены (АБВГД на англ. раскладке)
-	translate_to db 'АБВГД' ; символы на которые будет идти замена
-	translate_length dw 5 ; длина строки trasnlate_from
-	translate_enabled db 0 ; флаг функции перевода
+	jmp _initTSR  ; на начало программы
+    installed DW 8888 ; будем потом проверят,установлена прога или нет
+    ignoredChars DB 'abcdefghijklmnopqrstuvwxyz' ; список игнорируемых символов
+	ignoredLength DW 26
+	ignoreEnabled DB 0 ; флаг функции игнорирования ввода
+	translateFrom DB 'F<DUL' ;символы для замены (АБВГД на англ. раскладке)
+	translateTo DB 'АБВГД' ; символы на которые будет идти замена
+	translateLength DW 5 ; длина строки trasnlate_from
+	translateEnabled DB 0 ; флаг функции перевода
 	
-	signaturePrintingEnabled db 0 ; флаг функции вывода информации об авторе
-	cursiveEnabled db 0 ; флаг перевода символа в курсив
+	signaturePrintingEnabled DB 0 ; флаг функции вывода информации об авторе
+	cursiveEnabled DB 0 ; флаг перевода символа в курсив
 	
 	true equ 0ffh ; константа истинности
-    old_int9h_offset dw ?
-    old_int9h_segment dw ?
-	old_09h dd 0
+    old_int9hOffset DW ? ; адрес старого обработчика int 9h
+    old_int9hSegment DW ? ; сегмент старого обработчика int 9h
 	
     ;новый обработчик
     new_int9h proc far
+		; сохраняем значения всех, изменяемых регистров в стэке
 		push SI
-		push	AX
-		push	BX
-		push	CX
-		push	DX
-		push	ES
-		push	DS
-		push	CS
+		push AX
+		push BX
+		push CX
+		push DX
+		push ES
+		push DS
+		; синхронизируем CS и DS
+		push CS
 		pop	DS
 
 		;проверка F1-F4
 		in AL, 60h
 		sub AL, 58
 		_F1:
-			cmp al, 1 ; F1
+			cmp AL, 1 ; F1
 			jne _F2
 			not signaturePrintingEnabled
 			jmp _translate_or_ignore
 		_F2:
-			cmp al, 2 ; F2
+			cmp AL, 2 ; F2
 			jne _F3
 			not cursiveEnabled
 			jmp _translate_or_ignore
 		_F3:
-			cmp al, 3 ; F3
+			cmp AL, 3 ; F3
 			jne _F4
-			not translate_enabled
+			not translateEnabled
 			jmp _translate_or_ignore
 		_F4:
-			cmp al, 4 ; F4
+			cmp AL, 4 ; F4
 			jne _translate_or_ignore
-			not ignore_enabled
+			not ignoreEnabled
 			jmp _translate_or_ignore
 			
 		
@@ -63,60 +64,76 @@ code segment	'code'
 		_translate_or_ignore:
 		
 		pushf
-		call dword ptr cs:[old_int9h_offset]
+		call dword ptr CS:[old_int9hOffset]
 		mov	AX, 40h 	;40h-сегмент,где хранятся флаги сост-я клавы,кольц. буфер ввода 
 		mov	ES, AX
 		mov	BX, ES:[1Ch]	;адрес хвоста
 		dec	BX	;сместимся назад к последнему
 		dec	BX	;введённому символу
 		cmp	BX, 1Eh	;не вышли ли мы за пределы буфера?
-		jae	go
+		jae	_go
 		mov	BX, 3Ch	;хвост вышел за пределы буфера, значит последний введённый символ
 				;находится	в конце буфера
 
-	go:		
+	_go:		
 		mov DX, ES:[BX] ; в DX 0 введённый символ
 		;включен ли режим блокировки ввода?
-		cmp ignore_enabled, true
+		cmp ignoreEnabled, true
 		jne _check_translate
 		
 		; да, включен
-		mov si, 0
-		mov cx, ignored_length ;кол-во игнорируемых символов
-				
+		mov SI, 0
+		mov CX, ignoredLength ;кол-во игнорируемых символов
+		
+		; проверяем, присутствует ли текущий символ в списке игнорируемых
 	_check_ignored:
-		cmp dl,ignored_chars[si]
+		cmp DL,ignoredChars[SI]
 		je _block
-		inc si
+		inc SI
 	loop _check_ignored
 		jmp _check_translate
 		
+	; блокируем
 	_block:
-		mov es:[1ch], bx ;блокировка вывода символа
+		mov ES:[1Ch], BX ;блокировка ввода символа
+		; если по варианту нужно не блокировать ввод символа,
+		; а заменять одни символы другими,
+		; замените строку выше строкой
+		; mov ES:[BX], AX
+		; на месте AX может быть '*' для замены всех символов множества ignoredChars на звёздочки
+		; или, для перевода одних символов в другие - завести массив
+		; replaceWith DB '...', где перечислить символы, на которые пойдёт замена
+		; и раскомментировать строки ниже:
+		;   xor AX, AX
+		; 	mov AL, replaceWith[SI]
+		;	mov ES:[BX], AX	; замена символа
 		jmp _quit
 	
 	_check_translate:
 		;включен ли режим перевода?
-		cmp translate_enabled, true
+		cmp translateEnabled, true
 		jne _quit
 		
 		; да, включен
-		mov si, 0
-		mov cx, translate_length ;кол-во символов для перевода
-		
+		mov SI, 0
+		mov CX, translateLength ;кол-во символов для перевода
+		; проверяем, присутствует ли текущий символ в списке для перевода
 		_check_translate_loop:
-			cmp dl, translate_from[SI]
+			cmp DL, translateFrom[SI]
 			je _translate
 			inc SI
 		loop _check_translate_loop
 		jmp _quit
 		
+		; переводим
 		_translate:		
-			xor ax, ax
-			mov al, translate_to[SI]
-			mov es:[bx], ax	; замена символа
+			xor AX, AX
+			mov AL, translateTo[SI]
+			mov ES:[BX], AX	; замена символа
+			; замените AX на '*', если нужно заменять символы на звёздочку
 			
 	_quit:
+		; восстанавливаем все регистры
 		pop	DS
 		pop	ES
 		pop DX
@@ -127,60 +144,60 @@ code segment	'code'
 		iret
 new_int9h endp  
 
-real_start:                         ; старт основной программы
-    mov ax,3509h                    ; получить в ES:BX вектор 09
+_initTSR:                         ; старт основной программы
+    mov AX,3509h                    ; получить в ES:BX вектор 09
     int 21h                         ; прерывания
-    cmp word ptr es:installed,8888  ; проверка того, загружена ли уже программа
-    je remove                       ; если загружена - выгружаем
-    push es
-    mov ax, ds:[2Ch]                ; psp
-    mov es, ax
-    mov ah, 49h                     ; хватит памяти чтоб остаться
+    cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
+    je _remove                       ; если загружена - выгружаем
+    push ES
+    mov AX, DS:[2Ch]                ; psp
+    mov ES, AX
+    mov AH, 49h                     ; хватит памяти чтоб остаться
     int 21h                         ; резидентом?
-    pop es
-    jc not_mem                      ; не хватило - выходим
-	mov	word ptr CS:old_int9h_offset, BX
-	mov	word ptr CS:old_int9h_segment, ES
-    mov ax, 2509h                   ; установим вектор на 09
-    mov dx, offset new_int9h            ; прерывание
+    pop ES
+    jc _notMem                      ; не хватило - выходим
+	mov	word ptr CS:old_int9hOffset, BX
+	mov	word ptr CS:old_int9hSegment, ES
+    mov AX, 2509h                   ; установим вектор на 09
+    mov DX, offset new_int9h            ; прерывание
     int 21h
-    mov dx, offset ok_installed         ; выводим что все ок
-    mov ah, 9
+    mov DX, offset installedMsg         ; выводим что все ок
+    mov AH, 9
     int 21h
-    mov dx, offset real_start       ; остаемся в памяти резидентом
+    mov DX, offset _initTSR       ; остаемся в памяти резидентом
     int 27h                         ; и выходим
     ; конец основной программы  
-remove:                             ; выгрузка программы из памяти
-    push es
-    push ds
-    mov dx, es:old_int9h_offset         ; возвращаем вектор прерывания
-    mov ds, es:old_int9h_segment        ; на место
-    mov ax, 2509h
+_remove:                             ; выгрузка программы из памяти
+    push ES
+    push DS
+    mov DX, ES:old_int9hOffset         ; возвращаем вектор прерывания
+    mov DS, ES:old_int9hSegment        ; на место
+    mov AX, 2509h
     int 21h
-    pop ds
-    pop es
-    mov ah, 49h                     ; освобождаем память
+    pop DS
+    pop ES
+    mov AH, 49h                     ; освобождаем память
     int 21h
-    jc not_remove                   ; не освободилась - ошибка
-    mov dx, offset removed_msg      ; все хорошо
-    mov ah, 9
+    jc _notRemove                   ; не освободилась - ошибка
+    mov DX, offset removedMsg      ; все хорошо
+    mov AH, 9
     int 21h
-    jmp exit                        ; выходим из программы
-not_remove:                         ; ошибка с высвобождением памяти.
-    mov dx, offset noremove_msg                     
-    mov ah, 9
+    jmp _exit                        ; выходим из программы
+_notRemove:                         ; ошибка с высвобождением памяти.
+    mov DX, offset noRemoveMsg                     
+    mov AH, 9
     int 21h
-    jmp exit
-not_mem:                            ; не хватает памяти, чтобы остаться резидентом
-    mov dx, offset nomem_msg
-    mov ah, 9
+    jmp _exit
+_notMem:                            ; не хватает памяти, чтобы остаться резидентом
+    mov DX, offset noMemMsg
+    mov AH, 9
     int 21h
-exit:                               ; выход
+_exit:                               ; выход
     int 20h
-ok_installed db 'Installed$'
-nomem_msg db 'Out of memory$'
-removed_msg db 'Uninstalled$'
-noremove_msg db 'Error: cannot unload program$'
+installedMsg DB 'Installed$'
+noMemMsg DB 'Out of memory$'
+removedMsg DB 'Uninstalled$'
+noRemoveMsg DB 'Error: cannot unload program$'
 
 code ends
 end _start
