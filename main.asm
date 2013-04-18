@@ -24,46 +24,48 @@ code segment	'code'
 	jmp _initTSR ; на начало программы
 	
 	; данные
-	installed				DW	8888							; будем потом проверят,установлена прога или нет
-	ignoredChars 				DB	'abcdefghijklmnopqrstuvwxyz'	;@ список игнорируемых символов
-	ignoredLength 			DW	26							;@ длина строки ignoredChars
-	ignoreEnabled 			DB	0							; флаг функции игнорирования ввода
-	translateFrom 			DB	'F<DUL'						;@ символы для замены (АБВГД на англ. раскладке)
+	installed					DW	8888						; будем потом проверят,установлен TSR или нет
+	ignoredChars 				DB	'abcdefghijklmnopqrstuvwxyz';@ список игнорируемых символов
+	ignoredLength 				DW	26							;@ длина строки ignoredChars
+	ignoreEnabled 				DB	0							; флаг функции игнорирования ввода
+	translateFrom 				DB	'F<DUL'						;@ символы для замены (АБВГД на англ. раскладке)
 	translateTo 				DB	'АБВГД'						;@ символы на которые будет идти замена
-	translateLength			DW	5							;@ длина строки trasnlateFrom
+	translateLength				DW	5							;@ длина строки trasnlateFrom
 	translateEnabled			DB	0							; флаг функции перевода
 	
 	signaturePrintingEnabled 	DB	0							; флаг функции вывода информации об авторе
-	cursiveEnabled 			DB	0							; флаг перевода символа в курсив
+	cursiveEnabled 				DB	0							; флаг перевода символа в курсив
 	
-	true 					equ	0ffh							; константа истинности
+	true 						equ	0ffh						; константа истинности
 	old_int9hOffset 			DW	?							; адрес старого обработчика int 9h
 	old_int9hSegment 			DW	?							; сегмент старого обработчика int 9h
 	old_int1ChOffset 			DW	?							; адрес старого обработчика int 1Ch
-	old_int1ChSegment 		DW	?							; сегмент старого обработчика int 1Ch
+	old_int1ChSegment 			DW	?							; сегмент старого обработчика int 1Ch
+	old_int2FhOffset 			DW	?							; адрес старого обработчика int 2Fh
+	old_int2FhSegment 			DW	?							; сегмент старого обработчика int 2Fh
 	
 	specialParamFlag			DW	0 							; 1 - выгрузить резидент, 2 - не загружать
-	counter	  				DW	0
-	printDelay				equ	2 							;@ задержка перед выводом "подписи" в секундах
+	counter	  					DW	0
+	printDelay					equ	2 							;@ задержка перед выводом "подписи" в секундах
 	printPos					DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
 	
 	;@ заменить на собственные данные. формирование таблицы идет по строке бОльшей длины (1я строка).
 	;@ можно формировать через код, но это слишком сильно увеличивает как объем работы, так и объем самого кода
-	signatureLine1			DB	179, 'Игорь Латкин', 179, 10
+	signatureLine1				DB	179, 'Игорь Латкин', 179, 10
 	Line1_length 				equ	$-signatureLine1
-	signatureLine2			DB	179, 'ИУ5-44      ',179,  10
+	signatureLine2				DB	179, 'ИУ5-44      ',179,  10
 	Line2_length 				equ	$-signatureLine2
-	signatureLine3			DB	179, 'Вариант #0  ', 179, 10
+	signatureLine3				DB	179, 'Вариант #0  ', 179, 10
 	Line3_length 				equ	$-signatureLine3
-	helpMsg					DB	'some help', 10, 13
-	helpMsg_length			equ $-helpMsg
+	helpMsg						DB	'some help', 10, 13
+	helpMsg_length				equ $-helpMsg
 	errorParamMsg				DB	10, 13, 'some error on param'
 	errorParamMsg_length		equ	$-errorParamMsg
 	
 	tableTop					DB	218, Line1_length-3 dup (196), 191, 10
 	tableTop_length 			equ	$-tableTop
-	tableBottom				DB	192, Line1_length-3 dup (196), 217, 10
-	tableBottom_length 		equ $-tableBottom
+	tableBottom					DB	192, Line1_length-3 dup (196), 217, 10
+	tableBottom_length 			equ $-tableBottom
 	
     ;новый обработчик
     new_int9h proc far
@@ -79,9 +81,32 @@ code segment	'code'
 		push CS
 		pop	DS
 
-		;@ проверка F1-F4
-		in AL, 60h
-		sub AL, 58
+		mov	AX, 40h ; 40h-сегмент,где хранятся флаги сост-я клавиатуры, кольц. буфер ввода 
+		mov	ES, AX
+		in	AL, 60h	; записываем в AL скан-код нажатой клавиши
+		
+		;@ проверка на Ctrl+U, только для ИУ5-41
+		cmp	AL, 22	; была нажата клавиша U?
+		jne	_test_Fx
+		mov	AH, ES:[17h]     ; флаги клавиатуры
+		and	AH, 00001111b
+		cmp	AH, 00000100b	; был ли нажат ctrl?
+		jne	_test_Fx
+		; выгрузка
+			mov AH, 0FFh
+			mov AL, 01h
+			int 2Fh
+			; завершаем обработку нажатия
+			pushf
+			call dword ptr CS:[old_int9hOffset]
+			;выходим
+			jmp _quit
+		
+		;@ далее - код для всех вариантов
+		
+		;проверка F1-F4
+		_test_Fx:
+		sub AL, 58 ; в AL теперь номер функциональной клавиши
 		_F1:
 			cmp AL, 1 ; F1
 			jne _F2
@@ -102,8 +127,7 @@ code segment	'code'
 			jne _translate_or_ignore
 			not ignoreEnabled
 			jmp _translate_or_ignore
-			
-		
+				
 		;игнорирование и перевод
 		_translate_or_ignore:
 		
@@ -220,6 +244,56 @@ new_int1Ch proc far
 	iret
 new_int1Ch endp
 
+new_int2Fh	proc
+	cmp	AH, 0FFh	;наша функция?
+	jne	_2Fh_exit	;нет - на старый обработчик
+	cmp	AL, 0	;подфункция проверки, загружен ли резидент в память?
+	je	_already_installed
+	cmp	AL, 1	;подфункция выгрузки из памяти?
+	je	_uninstall	
+	jmp	_2Fh_exit	;нет - на старый обработчик
+	
+_already_installed:
+		mov	AX, 'SS'	;вернём SS, если резидент загружен	в память
+		iret
+	
+_uninstall:
+	push	DS
+	push	ES
+	push	DX
+
+	mov	AX, 2509h
+	mov DX, ES:old_int9hOffset         ; возвращаем вектор прерывания
+    mov DS, ES:old_int9hSegment        ; на место
+	int	21h
+	
+	mov	AX, 251Ch
+	mov DX, ES:old_int1ChOffset         ; возвращаем вектор прерывания
+    mov DS, ES:old_int1ChSegment        ; на место
+	int	21h
+
+	mov	AX, 252Fh
+	mov DX, ES:old_int2FhOffset         ; возвращаем вектор прерывания
+    mov DS, ES:old_int2FhSegment        ; на место
+	int	21h
+
+	mov	ES, CS:2Ch	;загрузим в ES адрес окружения			
+	mov	AH, 49h		;выгрузим из памяти окружение
+	int	21h
+
+	push	CS
+	pop	ES	;в ES - адрес резидентной проги
+	mov	AH, 49h  ;выгрузим из памяти резидент
+	int	21h
+	pop	DX
+	pop	ES
+	pop	DS
+	iret
+
+_2Fh_exit:
+	jmp	dword ptr CS:[old_int2FhOffset]	;вызов старого обработчика
+new_int2Fh	endp
+
 printSignature proc
 	push AX
 	push DX
@@ -326,6 +400,114 @@ printSignature proc
 	ret
 printSignature endp
 
+unload proc
+    push ES
+    push DS
+    mov DX, ES:old_int9hOffset         ; возвращаем вектор прерывания
+    mov DS, ES:old_int9hSegment        ; на место
+    mov AX, 2509h
+    int 21h
+	mov DX, ES:old_int1ChOffset         ; возвращаем вектор прерывания
+    mov DS, ES:old_int1ChSegment        ; на место
+    mov AX, 251Ch
+    int 21h
+	
+    mov	ES, CS:2Ch	;загрузим в ES адрес окружения			
+	mov	AH, 49h		;выгрузим из памяти окружение
+	int	21h
+
+	push	CS
+	pop	ES	;в ES - адрес резидентной проги
+	mov	AH, 49h  ;выгрузим из памяти резидент
+	int	21h
+	int 20h
+	
+    ret
+unload endp
+
+_initTSR:                         	; старт резидента
+    call commandParamsHandler    
+	mov AX,3509h                    ; получить в ES:BX вектор 09
+    int 21h                         ; прерывания
+	
+	;@ === Удаление резидента из памяти ===
+	;@ Если по варианту необходимо выгружать резидент по повторному запуску приложений, 
+	;@ нужно закомментировать следующие 3 строки, а также
+	;@ содержимое метки _finishTSR ф-ии commandParamsHandler, но не саму метку!
+	cmp specialParamFlag, 1
+	je removingOnParameter
+	jmp no_removing_now
+	
+	removingOnParameter:
+	cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
+     je _remove                       
+	 
+	 no_removing_now:
+	 
+	 ;@ Если по варианту необходимо выгружать резидент по повторному запуску, то комментируем обе строки;
+	 ;@ если необходимо выгружать по параметру коммандной строки, то оставляем их
+	 cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
+	 je _alreadyInstalled
+    
+	cmp specialParamFlag, 2		; если была выведена справка
+	je _exit						; просто выходим
+	
+	push ES
+    mov AX, DS:[2Ch]                ; psp
+    mov ES, AX
+    mov AH, 49h                     ; хватит памяти чтоб остаться
+    int 21h                         ; резидентом?
+    pop ES
+    jc _notMem                      ; не хватило - выходим
+	
+	;== int 09h ==;
+
+	mov	word ptr CS:old_int9hOffset, BX
+	mov	word ptr CS:old_int9hSegment, ES
+    mov AX, 2509h                   ; установим вектор на 09
+    mov DX, offset new_int9h            ; прерывание
+    int 21h
+	
+	;== int 1Ch ==;
+	mov AX,351Ch                    ; получить в ES:BX вектор 1C
+    int 21h                         ; прерывания
+	mov	word ptr CS:old_int1ChOffset, BX
+	mov	word ptr CS:old_int1ChSegment, ES
+	mov AX, 251Ch                   ; установим вектор на 1C
+	mov DX, offset new_int1Ch            ; прерывание
+	int 21h
+	
+	;== int 2Fh ==;
+	mov AX,352Fh                    ; получить в ES:BX вектор 1C
+    int 21h                         ; прерывания
+	mov	word ptr CS:old_int2FhOffset, BX
+	mov	word ptr CS:old_int2FhSegment, ES
+	mov AX, 252Fh                   ; установим вектор на 2F
+	mov DX, offset new_int2Fh            ; прерывание
+	int 21h
+
+    mov DX, offset installedMsg         ; выводим что все ок
+    mov AH, 9
+    int 21h
+    mov DX, offset _initTSR       ; остаемся в памяти резидентом
+    int 27h                         ; и выходим
+    ; конец основной программы  
+_remove:                             ; выгрузка программы из памяти
+	call unload
+	jmp _exit
+_alreadyInstalled:
+	mov AH, 09h
+	lea DX, alreadyInstalledMsg
+	int 21h
+	jmp _exit
+_notMem:                            ; не хватает памяти, чтобы остаться резидентом
+    mov DX, offset noMemMsg
+    mov AH, 9
+    int 21h
+_exit:                               ; выход
+    int 20h
+
+	
 commandParamsHandler proc
 	push CS
 	pop ES
@@ -392,109 +574,8 @@ commandParamsHandler proc
 	exitHelp:
 	ret
 commandParamsHandler endp
-
-
-_initTSR:                         	; старт резидента
-    call commandParamsHandler
-    mov AX,3509h                    ; получить в ES:BX вектор 09
-    int 21h                         ; прерывания
-    
 	
-	;@ === Удаление резидента из памяти ===
-	;@ Если по варианту необходимо выгружать резидент по повторному запуску приложений, 
-	;@ нужно закомментировать следующие 3 строки, а также
-	;@ содержимое метки _finishTSR ф-ии commandParamsHandler, но не саму метку!
-	cmp specialParamFlag, 1
-	je removingOnParameter
-	jmp no_removing_now
 	
-	removingOnParameter:
-	cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
-     je _remove                       
-	 
-	 no_removing_now:
-	 
-	 ;@ Если по варианту необходимо выгружать резидент по повторному запуску, то комментируем обе строки;
-	 ;@ если необходимо выгружать по параметру коммандной строки, то оставляем их
-	 cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
-	 je _alreadyInstalled
-    
-	cmp specialParamFlag, 2		; если была выведена справка
-	je _exit						; просто выходим
-	
-	push ES
-    mov AX, DS:[2Ch]                ; psp
-    mov ES, AX
-    mov AH, 49h                     ; хватит памяти чтоб остаться
-    int 21h                         ; резидентом?
-    pop ES
-    jc _notMem                      ; не хватило - выходим
-	;== int 09h ==;
-	
-	mov	word ptr CS:old_int9hOffset, BX
-	mov	word ptr CS:old_int9hSegment, ES
-    mov AX, 2509h                   ; установим вектор на 09
-    mov DX, offset new_int9h            ; прерывание
-    int 21h
-	
-	;== int 1Ch ==;
-	mov AX,351Ch                    ; получить в ES:BX вектор 1C
-     int 21h                         ; прерывания
-	mov	word ptr CS:old_int1ChOffset, BX
-	mov	word ptr CS:old_int1ChSegment, ES
-	mov AX, 251Ch                   ; установим вектор на 09
-	mov DX, offset new_int1Ch            ; прерывание
-	int 21h
-
-    mov DX, offset installedMsg         ; выводим что все ок
-    mov AH, 9
-    int 21h
-    mov DX, offset _initTSR       ; остаемся в памяти резидентом
-    int 27h                         ; и выходим
-    ; конец основной программы  
-_remove:                             ; выгрузка программы из памяти
-	call unload
-	jmp _exit
-_alreadyInstalled:
-	mov AH, 09h
-	lea DX, alreadyInstalledMsg
-	int 21h
-	jmp _exit
-_notMem:                            ; не хватает памяти, чтобы остаться резидентом
-    mov DX, offset noMemMsg
-    mov AH, 9
-    int 21h
-_exit:                               ; выход
-    int 20h
-
-	
-unload proc
-    push ES
-    push DS
-    mov DX, ES:old_int9hOffset         ; возвращаем вектор прерывания
-    mov DS, ES:old_int9hSegment        ; на место
-    mov AX, 2509h
-    int 21h
-	mov DX, ES:old_int1ChOffset         ; возвращаем вектор прерывания
-    mov DS, ES:old_int1ChSegment        ; на место
-    mov AX, 251Ch
-    int 21h
-    pop DS
-    pop ES
-    mov AH, 49h                     ; освобождаем память
-    int 21h
-    jc _notRemove                   ; не освободилась - ошибка
-    mov DX, offset removedMsg      ; все хорошо
-    mov AH, 9
-    int 21h
-    ret                      	; выходим из программы
-_notRemove:                         ; ошибка с высвобождением памяти.
-    mov DX, offset noRemoveMsg                     
-    mov AH, 9
-    int 21h
-    ret
-unload endp
-
 installedMsg DB 'Installed$'
 alreadyInstalledMsg DB 'Already Installed$'
 noMemMsg DB 'Out of memory$'
