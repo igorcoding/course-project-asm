@@ -49,14 +49,16 @@ code segment	'code'
 	printDelay					equ	2 							;@ задержка перед выводом "подписи" в секундах
 	printPos						DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
 	
-	;@ заменить на собственные данные. формирование таблицы идет по строке бОльшей длины (1я строка).
+	;@ заменить на собственные данные. формирование таблицы идет по строке большей длины (1я строка).
 	signatureLine1				DB	179, 'Игорь Латкин', 179
 	Line1_length 					equ	$-signatureLine1
 	signatureLine2				DB	179, 'ИУ5-44      ', 179
 	Line2_length 					equ	$-signatureLine2
 	signatureLine3				DB	179, 'Вариант #0  ', 179
 	Line3_length 					equ	$-signatureLine3
-	helpMsg						DB	'some help', 10, 13
+	helpMsg						DB	'main.com [/?] [/u]', 10, 13
+								DB	'[/u]    выгрузка резидента из памяти', 10, 13
+								DB	'[?]     вывод данной справки', 10, 13
 	helpMsg_length				equ  $-helpMsg
 	errorParamMsg					DB	10, 13, 'some error on param'
 	errorParamMsg_length			equ	$-errorParamMsg
@@ -261,7 +263,7 @@ new_int1Ch proc far
 	iret
 new_int1Ch endp
 
-new_int2Fh	proc
+new_int2Fh proc
 	cmp	AH, 0FFh	;наша функция?
 	jne	_2Fh_std	;нет - на старый обработчик
 	cmp	AL, 0	;подфункция проверки, загружен ли резидент в память?
@@ -347,7 +349,7 @@ _2Fh_exit:
 	pop	ES
 	pop	DS
 	iret
-new_int2Fh	endp
+new_int2Fh endp
 
 printSignature proc
 	push AX
