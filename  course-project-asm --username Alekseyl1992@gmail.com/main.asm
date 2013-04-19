@@ -24,7 +24,6 @@ code segment	'code'
 	jmp _initTSR ; на начало программы
 	
 	; данные
-	installed					DW	8888						; будем потом проверят,установлен TSR или нет
 	ignoredChars 				DB	'abcdefghijklmnopqrstuvwxyz';@ список игнорируемых символов
 	ignoredLength 				DW	26							;@ длина строки ignoredChars
 	ignoreEnabled 				DB	0							; флаг функции игнорирования ввода
@@ -50,7 +49,6 @@ code segment	'code'
 	printPos					DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
 	
 	;@ заменить на собственные данные. формирование таблицы идет по строке бОльшей длины (1я строка).
-	;@ можно формировать через код, но это слишком сильно увеличивает как объем работы, так и объем самого кода
 	signatureLine1				DB	179, 'Игорь Латкин', 179, 10
 	Line1_length 				equ	$-signatureLine1
 	signatureLine2				DB	179, 'ИУ5-44      ',179,  10
@@ -102,9 +100,6 @@ code segment	'code'
 		; выгрузка
 			mov AH, 0FFh
 			mov AL, 01h
-			; ES = CS
-			push CS
-			pop ES
 			int 2Fh
 			; завершаем обработку нажатия
 			pushf
@@ -264,13 +259,17 @@ new_int2Fh	proc
 	jmp	_2Fh_std	;нет - на старый обработчик
 	
 _already_installed:
-		mov	AX, 'SS'	;вернём SS, если резидент загружен	в память
+		mov	AH, 'i'	;вернём 'i', если резидент загружен	в память
 		iret
 	
 _uninstall:
 	push	DS
 	push	ES
 	push	DX
+	
+	; CS = ES, для доступа к переменным
+	push CS
+	pop ES
 	
 	mov	AX, 2509h
 	mov DX, ES:old_int9hOffset         ; возвращаем вектор прерывания
@@ -425,31 +424,6 @@ printSignature proc
 	ret
 printSignature endp
 
-unload proc
-    push ES
-    push DS
-    mov DX, ES:old_int9hOffset         ; возвращаем вектор прерывания
-    mov DS, ES:old_int9hSegment        ; на место
-    mov AX, 2509h
-    int 21h
-	mov DX, ES:old_int1ChOffset         ; возвращаем вектор прерывания
-    mov DS, ES:old_int1ChSegment        ; на место
-    mov AX, 251Ch
-    int 21h
-	
-    mov	ES, CS:2Ch	;загрузим в ES адрес окружения			
-	mov	AH, 49h		;выгрузим из памяти окружение
-	int	21h
-
-	push	CS
-	pop	ES	;в ES - адрес резидентной проги
-	mov	AH, 49h  ;выгрузим из памяти резидент
-	int	21h
-	int 20h
-	
-    ret
-unload endp
-
 _initTSR:                         	; старт резидента
     call commandParamsHandler    
 	mov AX,3509h                    ; получить в ES:BX вектор 09
@@ -460,19 +434,25 @@ _initTSR:                         	; старт резидента
 	;@ нужно закомментировать следующие 3 строки, а также
 	;@ содержимое метки _finishTSR ф-ии commandParamsHandler, но не саму метку!
 	cmp specialParamFlag, 1
-	je removingOnParameter
+	je _removingOnParameter
 	jmp no_removing_now
 	
-	removingOnParameter:
-	cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
-     je _remove                       
+	_removingOnParameter:
+		mov AH, 0FFh
+		mov AL, 0
+		int 2Fh
+		cmp AH, 'i'  ; проверка того, загружена ли уже программа
+		je _remove                       
 	 
-	 no_removing_now:
-	 
-	 ;@ Если по варианту необходимо выгружать резидент по повторному запуску, то комментируем обе строки;
-	 ;@ если необходимо выгружать по параметру коммандной строки, то оставляем их
-	 cmp word ptr ES:installed, 8888  ; проверка того, загружена ли уже программа
-	 je _alreadyInstalled
+	no_removing_now:
+
+	;@ Если по варианту необходимо выгружать резидент по повторному запуску, то комментируем 5 строк ниже
+	;@ если необходимо выгружать по параметру коммандной строки, то оставляем их
+	mov AH, 0FFh
+	mov AL, 0
+	int 2Fh
+	cmp AH, 'i'  ; проверка того, загружена ли уже программа
+	je _alreadyInstalled
     
 	cmp specialParamFlag, 2		; если была выведена справка
 	je _exit						; просто выходим
@@ -517,8 +497,10 @@ _initTSR:                         	; старт резидента
     mov DX, offset _initTSR       ; остаемся в памяти резидентом
     int 27h                         ; и выходим
     ; конец основной программы  
-_remove:                             ; выгрузка программы из памяти
-	call unload
+_remove: ; выгрузка программы из памяти
+	mov AH, 0FFh
+	mov AL, 1
+	int 2Fh
 	jmp _exit
 _alreadyInstalled:
 	mov AH, 09h
