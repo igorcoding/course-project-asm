@@ -24,18 +24,18 @@ code segment	'code'
 	jmp _initTSR ; на начало программы
 	
 	; данные
-	ignoredChars 					DB	'abcdefghijklmnopqrstuvwxyz';@ список игнорируемых символов
-	ignoredLength 				DW	26							;@ длина строки ignoredChars
+	ignoredChars 					DB	'abcdefghijklmnopqrstuvwxyz'	;@ список игнорируемых символов
+	ignoredLength 				equ	$-ignoredChars				; длина строки ignoredChars
 	ignoreEnabled 				DB	0							; флаг функции игнорирования ввода
 	translateFrom 				DB	'F<DUL'						;@ символы для замены (АБВГД на англ. раскладке)
 	translateTo 					DB	'АБВГД'						;@ символы на которые будет идти замена
-	translateLength				DW	5							;@ длина строки trasnlateFrom
+	translateLength				equ	$-translateTo					; длина строки trasnlateFrom
 	translateEnabled				DB	0							; флаг функции перевода
 	
 	signaturePrintingEnabled 		DB	0							; флаг функции вывода информации об авторе
 	cursiveEnabled 				DB	0							; флаг перевода символа в курсив
 	
-	true 						equ	0ffh						; константа истинности
+	true 						equ	0ffh							; константа истинности
 	old_int9hOffset 				DW	?							; адрес старого обработчика int 9h
 	old_int9hSegment 				DW	?							; сегмент старого обработчика int 9h
 	old_int1ChOffset 				DW	?							; адрес старого обработчика int 1Ch
