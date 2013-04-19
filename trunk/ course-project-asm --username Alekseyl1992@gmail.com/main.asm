@@ -72,6 +72,7 @@ code segment	'code'
 	installedMsg					DB  'Installed$'
 	alreadyInstalledMsg			DB  'Already Installed$'
 	noMemMsg						DB  'Out of memory$'
+	notInstalledMsg				DB  'TSR is not installed$'
 	
 	removedMsg					DB  'Uninstalled'
 	removedMsg_length				equ	$-removedMsg
@@ -493,13 +494,17 @@ _initTSR:                         	; старт резидента
 	cmp unloadTSR, 1
 	je _removingOnParameter
 	jmp _notRemovingNow
-	
+
 	_removingOnParameter:
 		mov AH, 0FFh
 		mov AL, 0
 		int 2Fh
 		cmp AH, 'i'  ; проверка того, загружена ли уже программа
-		je _remove                       
+		je _remove 
+		mov AH, 09h				;@ для выгрузки резидента по повторному запуску закомментировать эту строку
+		lea DX, notInstalledMsg	;@ для выгрузки резидента по повторному запуску закомментировать эту строку
+		int 21h					;@ для выгрузки резидента по повторному запуску закомментировать эту строку
+		int 20h					;@ для выгрузки резидента по повторному запуску закомментировать эту строку
 	 
 	_notRemovingNow:
 	
