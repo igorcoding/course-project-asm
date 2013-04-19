@@ -43,7 +43,8 @@ code segment	'code'
 	old_int2FhOffset 				DW	?							; адрес старого обработчика int 2Fh
 	old_int2FhSegment 			DW	?							; сегмент старого обработчика int 2Fh
 	
-	specialParamFlag				DW	0 							; 1 - выгрузить резидент, 2 - не загружать
+	unloadTSR					DW	0 							; 1 - выгрузить резидент
+	notLoadTSR					DW	0							; 1 - не загружать
 	counter	  					DW	0
 	printDelay					equ	2 							;@ задержка перед выводом "подписи" в секундах
 	printPos						DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
@@ -415,7 +416,6 @@ printSignature proc
 		lea BP, signatureLine1
 		mov CX, Line1_length
 		mov BL, 0111b
-		;sub DL, tableTop_length	;смещаем начало ввода на "нужное"
 		mov AX, 1301h
 		int 10h
 		pop DX
@@ -426,7 +426,6 @@ printSignature proc
 		lea BP, signatureLine2
 		mov CX, Line2_length
 		mov BL, 0111b
-		;sub DL, Line1_length		;смещаем начало ввода на "нужное"
 		mov AX, 1301h
 		int 10h
 		pop DX
@@ -437,7 +436,6 @@ printSignature proc
 		lea BP, signatureLine3
 		mov CX, Line3_length
 		mov BL, 0111b
-		;sub DL, Line2_length
 		mov AX, 1301h
 		int 10h
 		pop DX
@@ -448,7 +446,6 @@ printSignature proc
 		lea BP, tableBottom
 		mov CX, tableBottom_length
 		mov BL, 0111b
-		;sub DL, Line3_length		;смещаем начало ввода на "нужное"
 		mov AX, 1301h
 		int 10h
 		pop DX
@@ -491,9 +488,9 @@ _initTSR:                         	; старт резидента
 	;@ Если по варианту необходимо выгружать резидент по повторному запуску приложений, 
 	;@ нужно закомментировать следующие 3 строки, а также
 	;@ содержимое метки _finishTSR ф-ии commandParamsHandler, но не саму метку!
-	cmp specialParamFlag, 1
+	cmp unloadTSR, 1
 	je _removingOnParameter
-	jmp no_removing_now
+	jmp _notRemovingNow
 	
 	_removingOnParameter:
 		mov AH, 0FFh
@@ -502,7 +499,10 @@ _initTSR:                         	; старт резидента
 		cmp AH, 'i'  ; проверка того, загружена ли уже программа
 		je _remove                       
 	 
-	no_removing_now:
+	_notRemovingNow:
+	
+	cmp notLoadTSR, 1		; если была выведена справка
+	je _exit						; просто выходим
 
 	;@ Если по варианту необходимо выгружать резидент по повторному запуску, то комментируем 5 строк ниже
 	;@ если необходимо выгружать по параметру коммандной строки, то оставляем их
@@ -512,8 +512,7 @@ _initTSR:                         	; старт резидента
 	cmp AH, 'i'  ; проверка того, загружена ли уже программа
 	je _alreadyInstalled
     
-	cmp specialParamFlag, 2		; если была выведена справка
-	je _exit						; просто выходим
+	
 	
 	push ES
     mov AX, DS:[2Ch]                ; psp
@@ -579,25 +578,25 @@ commandParamsHandler proc
 	mov SI, 80h   				;SI=смещение командной строки.
 	lodsb        					;Получим кол-во символов.
 	or AL, AL     				;Если 0 символов введено, 
-	jz Got_cmd   					;то все в порядке. 
+	jz _gotCmd   					;то все в порядке. 
 
 	inc SI       					;Теперь SI указывает на первый символ строки.
 
-	Next_char:
+	_nextChar:
 		lodsw       				;Получаем два символа
 		cmp AX, '?/' 				;Это '/?' ? Данные будут наоборот!
 		je _question
 		cmp AX, 'u/'
 		je _finishTSR
 		
-		jmp No_string
+		jmp _noString
 		ret
 
-	Got_cmd:
+	_gotCmd:
 		xor AL, AL 				;Сигнал того, что ничего не ввели в командной строке
 		ret  					;Выходим из процедуры
 
-	No_string:
+	_noString:
 		;mov AL, 3 				;Сигнал неверного ввода командной строки
 		ret
    
@@ -611,22 +610,22 @@ commandParamsHandler proc
 			mov AX, 1301h
 			int 10h
 		; конец вывода строки помощи
-		mov specialParamFlag, 2      ;флаг того, что необходимо не загружать резидент
+		mov notLoadTSR, 1      ;флаг того, что необходимо не загружать резидент
 		inc SI
-		jmp Next_char
+		jmp _nextChar
 	
 	;@ === Удаление резидента из памяти ===
 	;@ Если по варианту необходимо выгружать резидент по параметру '/u' коммандной строки, 
-	;@ нужно использовать следующий код, причем код ниже (в загрузки резидента),
-	;@ помеченного похожим комментарием необходимо раскомментировать
+	;@ нужно использовать следующий код, в остальных случаях необходимо закомменитровать 
+	;@ этот код, кроме названия метки! (по желанию можно избавиться и от метки, но аккуратно просмотреть использование)
 	_finishTSR:
-		mov specialParamFlag, 1      ;флаг того, что необходимо выгузить резидент
+		mov unloadTSR, 1      ;флаг того, что необходимо выгузить резидент
 		inc SI
-		jmp Next_char
+		jmp _nextChar
 
 	jmp exitHelp
 
-	errorParam:
+	_errorParam:
 		;вывод строки
 			mov AH,03
 			int 10h	
