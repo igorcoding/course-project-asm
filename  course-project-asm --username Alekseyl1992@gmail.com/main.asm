@@ -106,9 +106,16 @@ code segment	'code'
 			mov AL, 01h
 			int 2Fh
 			; завершаем обработку нажатия
-			pushf
-			call dword ptr CS:[old_int9hOffset]
-			;выходим
+			
+			in	AL, 61h	;контроллер состояния клавиатуры
+			or	AL, 10000000b	;пометим, что клавишу нажали
+			out	61h, AL
+			and	AL, 01111111b	;пометим, что клавишу отпустили
+			out	61h, AL
+			mov	AL, 20h
+			out	20h, AL	;отправим в контроллер прерываний признак конца прерывания
+			
+			; выходим
 			jmp _quit
 		
 		;@ далее - код для всех вариантов
@@ -262,6 +269,9 @@ new_int2Fh	proc
 	je	_uninstall	
 	jmp	_2Fh_std	;нет - на старый обработчик
 	
+_2Fh_std:
+	jmp	dword ptr CS:[old_int2FhOffset]	;вызов старого обработчика
+	
 _already_installed:
 		mov	AH, 'i'	;вернём 'i', если резидент загружен	в память
 		iret
@@ -270,6 +280,9 @@ _uninstall:
 	push	DS
 	push	ES
 	push	DX
+	push	BX
+	
+	xor BX, BX
 	
 	; CS = ES, для доступа к переменным
 	push CS
@@ -313,7 +326,8 @@ _notRemove: ; не удалось выполнить выгрузку
 	mov BL, 0111b
 	mov AX, 1301h
 	int 10h
-
+	jmp _2Fh_exit
+	
 _unloaded: ; выгрузка прошла успешно
     ; mov DX, offset removedMsg                     
     ; mov AH, 9
@@ -327,13 +341,11 @@ _unloaded: ; выгрузка прошла успешно
 	int 10h
 	
 _2Fh_exit:
+	pop BX
 	pop	DX
 	pop	ES
 	pop	DS
 	iret
-
-_2Fh_std:
-	jmp	dword ptr CS:[old_int2FhOffset]	;вызов старого обработчика
 new_int2Fh	endp
 
 printSignature proc
