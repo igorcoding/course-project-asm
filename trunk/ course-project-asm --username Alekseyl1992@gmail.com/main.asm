@@ -49,20 +49,20 @@ code segment	'code'
 	printPos					DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
 	
 	;@ заменить на собственные данные. формирование таблицы идет по строке бОльшей длины (1я строка).
-	signatureLine1				DB	179, 'Игорь Латкин', 179, 10
-	Line1_length 				equ	$-signatureLine1
-	signatureLine2				DB	179, 'ИУ5-44      ',179,  10
-	Line2_length 				equ	$-signatureLine2
-	signatureLine3				DB	179, 'Вариант #0  ', 179, 10
-	Line3_length 				equ	$-signatureLine3
+	signatureLine1				DB	179, 'Игорь Латкин', 179
+	Line1_length 					equ	$-signatureLine1
+	signatureLine2				DB	179, 'ИУ5-44      ', 179
+	Line2_length 					equ	$-signatureLine2
+	signatureLine3				DB	179, 'Вариант #0  ', 179
+	Line3_length 					equ	$-signatureLine3
 	helpMsg						DB	'some help', 10, 13
-	helpMsg_length				equ $-helpMsg
-	errorParamMsg				DB	10, 13, 'some error on param'
-	errorParamMsg_length		equ	$-errorParamMsg
+	helpMsg_length				equ  $-helpMsg
+	errorParamMsg					DB	10, 13, 'some error on param'
+	errorParamMsg_length			equ	$-errorParamMsg
 	
-	tableTop					DB	218, Line1_length-3 dup (196), 191, 10
-	tableTop_length 			equ	$-tableTop
-	tableBottom					DB	192, Line1_length-3 dup (196), 217, 10
+	tableTop						DB	218, Line1_length-2 dup (196), 191
+	tableTop_length 				equ	$-tableTop
+	tableBottom					DB	192, Line1_length-2 dup (196), 217
 	tableBottom_length 			equ $-tableBottom
 	
 	; сообщения		
@@ -369,43 +369,60 @@ printSignature proc
 		pop ES						;указываем ES на CS
 		
 		;вывод 'верхушки' таблицы
+		push DX
 		lea BP, tableTop				;помещаем в BP указатель на выводимую строку
 		mov CX, tableTop_length		;в CX - длина строки
 		mov BL, 0111b 				;цвет выводимого текста ref: http://en.wikipedia.org/wiki/BIOS_color_attributes
 		mov AX, 1301h					;AH=13h - номер ф-ии, AL=01h - курсор перемещается при выводе каждого из символов строки
 		int 10h
+		pop DX
+		inc DH
+		
 		
 		;вывод первой линии
+		push DX
 		lea BP, signatureLine1
 		mov CX, Line1_length
 		mov BL, 0111b
-		sub DL, tableTop_length-1	;смещаем начало ввода на "нужное"
+		;sub DL, tableTop_length	;смещаем начало ввода на "нужное"
 		mov AX, 1301h
 		int 10h
+		pop DX
+		inc DH
 		
 		;вывод второй линии
+		push DX
 		lea BP, signatureLine2
 		mov CX, Line2_length
 		mov BL, 0111b
-		sub DL, Line1_length-1		;смещаем начало ввода на "нужное"
+		;sub DL, Line1_length		;смещаем начало ввода на "нужное"
 		mov AX, 1301h
 		int 10h
+		pop DX
+		inc DH
 		
 		;вывод третьей линии
+		push DX
 		lea BP, signatureLine3
 		mov CX, Line3_length
 		mov BL, 0111b
-		sub DL, Line2_length-1
+		;sub DL, Line2_length
 		mov AX, 1301h
 		int 10h
+		pop DX
+		inc DH
 		
 		;вывод 'низа' таблицы
+		push DX
 		lea BP, tableBottom
 		mov CX, tableBottom_length
 		mov BL, 0111b
-		sub DL, Line3_length-1		;смещаем начало ввода на "нужное"
+		;sub DL, Line3_length		;смещаем начало ввода на "нужное"
 		mov AX, 1301h
 		int 10h
+		pop DX
+		inc DH
+		
 		
 		pop DX						;восстанавливаем из стека прежнее положение курсора
 		mov AH, 02h					;меняем положение курсора на первоначальное
@@ -425,6 +442,16 @@ printSignature proc
 printSignature endp
 
 _initTSR:                         	; старт резидента
+	mov AH, 03h
+	int 10h
+	push DX
+	mov AH,00h					; установка видеорежима (83h  текст  80x25  16/8  CGA,EGA  b800  Comp,RGB,Enhanced), без очистки экрана
+	mov AL,83h
+	int 10h
+	pop DX
+	mov AH, 02h
+	int 10h
+	
     call commandParamsHandler    
 	mov AX,3509h                    ; получить в ES:BX вектор 09
     int 21h                         ; прерывания
