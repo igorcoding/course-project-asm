@@ -24,29 +24,29 @@ code segment	'code'
 	jmp _initTSR ; на начало программы
 	
 	; данные
-	ignoredChars 				DB	'abcdefghijklmnopqrstuvwxyz';@ список игнорируемых символов
+	ignoredChars 					DB	'abcdefghijklmnopqrstuvwxyz';@ список игнорируемых символов
 	ignoredLength 				DW	26							;@ длина строки ignoredChars
 	ignoreEnabled 				DB	0							; флаг функции игнорирования ввода
 	translateFrom 				DB	'F<DUL'						;@ символы для замены (АБВГД на англ. раскладке)
-	translateTo 				DB	'АБВГД'						;@ символы на которые будет идти замена
+	translateTo 					DB	'АБВГД'						;@ символы на которые будет идти замена
 	translateLength				DW	5							;@ длина строки trasnlateFrom
-	translateEnabled			DB	0							; флаг функции перевода
+	translateEnabled				DB	0							; флаг функции перевода
 	
-	signaturePrintingEnabled 	DB	0							; флаг функции вывода информации об авторе
+	signaturePrintingEnabled 		DB	0							; флаг функции вывода информации об авторе
 	cursiveEnabled 				DB	0							; флаг перевода символа в курсив
 	
 	true 						equ	0ffh						; константа истинности
-	old_int9hOffset 			DW	?							; адрес старого обработчика int 9h
-	old_int9hSegment 			DW	?							; сегмент старого обработчика int 9h
-	old_int1ChOffset 			DW	?							; адрес старого обработчика int 1Ch
+	old_int9hOffset 				DW	?							; адрес старого обработчика int 9h
+	old_int9hSegment 				DW	?							; сегмент старого обработчика int 9h
+	old_int1ChOffset 				DW	?							; адрес старого обработчика int 1Ch
 	old_int1ChSegment 			DW	?							; сегмент старого обработчика int 1Ch
-	old_int2FhOffset 			DW	?							; адрес старого обработчика int 2Fh
+	old_int2FhOffset 				DW	?							; адрес старого обработчика int 2Fh
 	old_int2FhSegment 			DW	?							; сегмент старого обработчика int 2Fh
 	
-	specialParamFlag			DW	0 							; 1 - выгрузить резидент, 2 - не загружать
+	specialParamFlag				DW	0 							; 1 - выгрузить резидент, 2 - не загружать
 	counter	  					DW	0
 	printDelay					equ	2 							;@ задержка перед выводом "подписи" в секундах
-	printPos					DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
+	printPos						DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
 	
 	;@ заменить на собственные данные. формирование таблицы идет по строке бОльшей длины (1я строка).
 	signatureLine1				DB	179, 'Игорь Латкин', 179
@@ -66,11 +66,15 @@ code segment	'code'
 	tableBottom_length 			equ $-tableBottom
 	
 	; сообщения		
-	installedMsg				DB 'Installed$'
-	alreadyInstalledMsg			DB 'Already Installed$'
-	noMemMsg					DB 'Out of memory$'
-	removedMsg					DB 'Uninstalled$'
-	noRemoveMsg					DB 'Error: cannot unload program$'
+	installedMsg					DB  'Installed$'
+	alreadyInstalledMsg			DB  'Already Installed$'
+	noMemMsg						DB  'Out of memory$'
+	
+	removedMsg					DB  'Uninstalled'
+	removedMsg_length				equ	$-removedMsg
+	
+	noRemoveMsg					DB  'Error: cannot unload program'
+	noRemoveMsg_length			equ	$-noRemoveMsg
 	
     ;новый обработчик
     new_int9h proc far
@@ -299,14 +303,28 @@ _uninstall:
 	jmp _unloaded
 	
 _notRemove: ; не удалось выполнить выгрузку
-    mov DX, offset noRemoveMsg                     
-    mov AH, 9
-    int 21h
+    ; mov DX, offset noRemoveMsg                     
+    ; mov AH, 9
+    ; int 21h
+	mov AH, 03h					; получаем позицию курсора
+	int 10h
+	lea BP, noRemoveMsg
+	mov CX, noRemoveMsg_length
+	mov BL, 0111b
+	mov AX, 1301h
+	int 10h
 
 _unloaded: ; выгрузка прошла успешно
-    mov DX, offset removedMsg                     
-    mov AH, 9
-    int 21h
+    ; mov DX, offset removedMsg                     
+    ; mov AH, 9
+    ; int 21h
+	mov AH, 03h					; получаем позицию курсора
+	int 10h
+	lea BP, removedMsg
+	mov CX, removedMsg_length
+	mov BL, 0111b
+	mov AX, 1301h
+	int 10h
 	
 _2Fh_exit:
 	pop	DX
@@ -330,6 +348,7 @@ printSignature proc
 	push DI
 
 	xor AX, AX
+	xor BX, BX
 	xor DX, DX
 	
 	mov AH, 03h						;чтение текущей позиции курсора
@@ -423,7 +442,7 @@ printSignature proc
 		pop DX
 		inc DH
 		
-		
+		xor BX, BX
 		pop DX						;восстанавливаем из стека прежнее положение курсора
 		mov AH, 02h					;меняем положение курсора на первоначальное
 		int 10h
