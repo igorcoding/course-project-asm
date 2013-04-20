@@ -152,7 +152,7 @@ code segment	'code'
 		_translate_or_ignore:
 		
 		pushf
-		call dword ptr CS:[old_int9hOffset]
+		call dword ptr CS:[old_int9hOffset] ; вызываем стандартный обработчик прерывания
 		mov	AX, 40h 	; 40h-сегмент,где хранятся флаги сост-я клавы,кольц. буфер ввода 
 		mov	ES, AX
 		mov	BX, ES:[1Ch]	; адрес хвоста
@@ -264,6 +264,12 @@ new_int1Ch proc far
 	iret
 new_int1Ch endp
 
+;=== Обработчик прерывания int 2Fh ===;
+;=== Служит для:
+;===  1) проверки факта присутствия TSR в памяти (при AH=0FFh, AL=0)
+;===     будет возвращён AH='i' в случае, если TSR уже загружен
+;===  2) выгрузки TSR из памяти (при AH=0FFh, AL=1)
+;===     
 new_int2Fh proc
 	cmp	AH, 0FFh	;наша функция?
 	jne	_2Fh_std	;нет - на старый обработчик
@@ -307,22 +313,20 @@ _uninstall:
     mov DS, ES:old_int2FhSegment        ; на место
 	int	21h
 
-	mov	ES, CS:2Ch	;загрузим в ES адрес окружения			
-	mov	AH, 49h		;выгрузим из памяти окружение
+	mov	ES, CS:2Ch	; загрузим в ES адрес окружения			
+	mov	AH, 49h		; выгрузим из памяти окружение
 	int	21h
 	jc _notRemove
 	
 	push	CS
-	pop	ES	;в ES - адрес резидентной проги
+	pop	ES	;в ES - адрес резидентной программы
 	mov	AH, 49h  ;выгрузим из памяти резидент
 	int	21h
 	jc _notRemove
 	jmp _unloaded
 	
 _notRemove: ; не удалось выполнить выгрузку
-    ; mov DX, offset noRemoveMsg                     
-    ; mov AH, 9
-    ; int 21h
+    ; вывод сообщения о неудачной выгрузке
 	mov AH, 03h					; получаем позицию курсора
 	int 10h
 	lea BP, noRemoveMsg
@@ -333,9 +337,7 @@ _notRemove: ; не удалось выполнить выгрузку
 	jmp _2Fh_exit
 	
 _unloaded: ; выгрузка прошла успешно
-    ; mov DX, offset removedMsg                     
-    ; mov AH, 9
-    ; int 21h
+    ; вывод сообщения об удачной выгрузке
 	mov AH, 03h					; получаем позицию курсора
 	int 10h
 	lea BP, removedMsg
@@ -352,6 +354,9 @@ _2Fh_exit:
 	iret
 new_int2Fh endp
 
+;=== Процедура вывода подписи (ФИО, группа)
+;=== Настраивается значениями переменных в начале исходника
+;===
 printSignature proc
 	push AX
 	push DX
@@ -472,6 +477,9 @@ printSignature proc
 	ret
 printSignature endp
 
+
+;=== Отсюда начинается выполнение основной части программы ===;
+;===
 _initTSR:                         	; старт резидента
 	mov AH, 03h
 	int 10h
@@ -578,7 +586,8 @@ _notMem:                            ; не хватает памяти, чтобы остаться резидент
 _exit:                               ; выход
     int 20h
 
-	
+;=== Процедура проверки параметров ком. строки ===;
+;===
 commandParamsHandler proc
 	push CS
 	pop ES
@@ -599,7 +608,7 @@ commandParamsHandler proc
 	
 	
 		lodsw       				;Получаем два символа
-		cmp AX, '?/' 				;Это '/?' ? Данные будут наоборот!
+		cmp AX, '?/' 				;Это '/?' (данные расположены в обратном порядк, т.е. AL:AH вместо AH:AL)
 		je _question
 		cmp AX, 'u/'
 		je _finishTSR
