@@ -43,8 +43,8 @@ code segment	'code'
 	old_int2FhOffset 				DW	?							; адрес старого обработчика int 2Fh
 	old_int2FhSegment 			DW	?							; сегмент старого обработчика int 2Fh
 	
-	unloadTSR					DW	0 							; 1 - выгрузить резидент
-	notLoadTSR					DW	0							; 1 - не загружать
+	unloadTSR					DB	0 							; 1 - выгрузить резидент
+	notLoadTSR					DB	0							; 1 - не загружать
 	counter	  					DW	0
 	printDelay					equ	2 							;@ задержка перед выводом "подписи" в секундах
 	printPos						DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
@@ -491,7 +491,7 @@ _initTSR:                         	; старт резидента
 	;@ Если по варианту необходимо выгружать резидент по повторному запуску приложений, 
 	;@ нужно закомментировать следующие 3 строки, а также
 	;@ содержимое метки _finishTSR ф-ии commandParamsHandler, но не саму метку!
-	cmp unloadTSR, 1
+	cmp unloadTSR, true
 	je _removingOnParameter
 	jmp _notRemovingNow
 
@@ -508,7 +508,7 @@ _initTSR:                         	; старт резидента
 	 
 	_notRemovingNow:
 	
-	cmp notLoadTSR, 1		; если была выведена справка
+	cmp notLoadTSR, true			; если была выведена справка
 	je _exit						; просто выходим
 
 	;@ Если по варианту необходимо выгружать резидент по повторному запуску, то комментируем 5 строк ниже
@@ -582,30 +582,32 @@ _exit:                               ; выход
 commandParamsHandler proc
 	push CS
 	pop ES
+	mov unloadTSR, 0
+	mov notLoadTSR, 0
+	
 	mov SI, 80h   				;SI=смещение командной строки.
 	lodsb        					;Получим кол-во символов.
 	or AL, AL     				;Если 0 символов введено, 
-	jz _gotCmd   					;то все в порядке. 
-
-	inc SI       					;Теперь SI указывает на первый символ строки.
+	jz _exitHelp   				;то все в порядке. 
 
 	_nextChar:
+	
+	inc SI       					;Теперь SI указывает на первый символ строки.
+	
+	cmp [SI], BYTE ptr 13
+	je _exitHelp
+	
+	
 		lodsw       				;Получаем два символа
 		cmp AX, '?/' 				;Это '/?' ? Данные будут наоборот!
 		je _question
 		cmp AX, 'u/'
 		je _finishTSR
 		
-		jmp _noString
-		ret
-
-	_gotCmd:
-		xor AL, AL 				;Сигнал того, что ничего не ввели в командной строке
-		ret  					;Выходим из процедуры
-
-	_noString:
-		;mov AL, 3 				;Сигнал неверного ввода командной строки
-		ret
+		;cmp AL, '/'
+		;je _errorParam
+		
+		jmp _exitHelp
    
 	_question:
 		; вывод строки помощи
@@ -617,8 +619,7 @@ commandParamsHandler proc
 			mov AX, 1301h
 			int 10h
 		; конец вывода строки помощи
-		mov notLoadTSR, 1      ;флаг того, что необходимо не загружать резидент
-		inc SI
+		not notLoadTSR	        ;флаг того, что необходимо не загружать резидент
 		jmp _nextChar
 	
 	;@ === Удаление резидента из памяти ===
@@ -626,11 +627,10 @@ commandParamsHandler proc
 	;@ нужно использовать следующий код, в остальных случаях необходимо закомменитровать 
 	;@ этот код, кроме названия метки! (по желанию можно избавиться и от метки, но аккуратно просмотреть использование)
 	_finishTSR:
-		mov unloadTSR, 1      ;флаг того, что необходимо выгузить резидент
-		inc SI
+		not unloadTSR		      ;флаг того, что необходимо выгузить резидент
 		jmp _nextChar
 
-	jmp exitHelp
+	jmp _exitHelp
 
 	_errorParam:
 		;вывод строки
@@ -642,7 +642,7 @@ commandParamsHandler proc
 			mov AX, 1301h
 			int 10h
 		;конец вывода строки
-	exitHelp:
+	_exitHelp:
 	ret
 commandParamsHandler endp
 
