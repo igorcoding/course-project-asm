@@ -57,10 +57,10 @@ code segment	'code'
 	signatureLine3				DB	179, 'Вариант #0  ', 179
 	Line3_length 					equ	$-signatureLine3
 	helpMsg						DB	'main.com [/?] [/u]', 10, 13
+								DB	'[/?]    вывод данной справки', 10, 13
 								DB	'[/u]    выгрузка резидента из памяти', 10, 13
-								DB	'[?]     вывод данной справки', 10, 13
 	helpMsg_length				equ  $-helpMsg
-	errorParamMsg					DB	10, 13, 'some error on param'
+	errorParamMsg					DB	'some error on param', 10, 13
 	errorParamMsg_length			equ	$-errorParamMsg
 	
 	tableTop						DB	218, Line1_length-2 dup (196), 191
