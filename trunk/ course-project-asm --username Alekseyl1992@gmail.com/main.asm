@@ -51,7 +51,7 @@ code segment	'code'
 								DB 00000000b
 								DB 00000000b
 	
-	charToCursiveIndex 			DB 'B'							;@ символ для замены
+	charToCursiveIndex 			DB 'В'							;@ символ для замены
 	savedSymbol 					DB 16 dup(0FFh)					; переменная для хранения старого символа
 	
 	true 						equ	0FFh							; константа истинности
@@ -520,7 +520,7 @@ _shifTtable:
 	
 	; пpи savefont смещается pегистp ES
 	; поэтомy пpиходится делать такие махинации, чтобы 
-	; записать полyченный элемент туда, куда нам нужно (в stored_symbol)
+	; записать полyченный элемент в savedSymbol
 	; swap(ES, DS) и сохранение старого значения DS
 	push DS
 	pop AX
@@ -535,7 +535,7 @@ _shifTtable:
 	; сохpаняем в пеpеменнyю savedSymbol
 	; таблицy нyжного символа
 	mov CX, 16
-	; movsb из DS:si в ES:di
+	; movsb из DS:SI в ES:DI
 	rep movsb
 	; исходные позиции сегментов возвpащены	
 	pop DS ; восстановление DS
