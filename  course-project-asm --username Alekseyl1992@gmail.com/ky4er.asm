@@ -11,112 +11,99 @@
 ;;;;;; OFFTOPIC
 
 code segment 'code'
-assume cs:code, ds:code, es:code
+assume CS:code, DS:code, ES:code
 
-; от верхней строки, до нижней
-symbol db 00000000b
-       db 00000000b
-       db 00000000b
-       db 00111110b
-       db 00111111b
-       db 00110011b
-       db 01100110b
-       db 01100110b
-       db 01111100b
-       db 11000110b
-       db 11000110b
-       db 11000110b
-       db 11111100b
-       db 00000000b
-       db 00000000b
-       db 00000000b
-	
-; символ для замены	
-char db 'В'
-; переменная для хранения старого символа
-stored_symbol db 16 dup(0ffh)
+org 100h
 
 start:
-	push cs
-	pop ds
-	push cs
-	pop es
+	push CS
+	pop DS
+	push CS
+	pop ES
 
-; сохpаняем написание символа 
-	call savefont
-	mov cl, char
-shifttable:
+	not cursiveEnabled
+	call setCursive
+
+; > ТОЛЬКО ДЛЯ ПРОВЕРКИ!!!!
+	not cursiveEnabled
+; > ждем нажатия любой кнопки	
+	mov ah, 07h
+	int 21h
+; > перевод обратно
+	call setCursive
+; > END
+
+; выход
+	mov AX, 4c00h
+	int 21h
+
+setCursive proc
+	cmp cursiveEnabled, true
+	jne _restoreSymbol
+; если флаг равен true, выполняем замену символа на курсивный вариант,
+; предварительно сохраняя старый символ в savedSymbol
+	
+	call saveFont
+	mov CL, charToCursiveIndex
+_shifTtable:
 ; мы получаем в bp таблицу всех символов. адрес указывает на символ 0
 ; поэтому нуэно совершить сдвиг 16*X - где X - код символа
 	add bp, 16
-	loop shifttable
-
-; >!!!
-; пpи savefont смещается pегистp es
+	loop _shiftTable
+	
+; пpи savefont смещается pегистp ES
 ; поэтомy пpиходится делать такие махинации, чтобы 
 ; записать полyченный элемент туда, куда нам нужно (в stored_symbol)
 ;
 ; тут возможно, можно изяшнее сделать, но я чет краб =(
 ;
-	push ds
-	pop ax
-	push es
-	pop ds
-	push ax
-	pop es
-	push ax
+	push DS
+	pop AX
+	push ES
+	pop DS
+	push AX
+	pop ES
+	push AX
 ;	
-	mov si, bp
-	lea di, stored_symbol
+	mov SI, BP
+	lea DI, savedSymbol
 ; сохpаняем в пеpеменнyю stored_symbol
 ; таблицy нyжного символа
-	mov cx, 16
+	mov CX, 16
 ; для себя
-; movsb из ds:si в es:di
+; movsb из DS:si в ES:di
 	rep movsb
-
 ; исходные позиции сегментов возвpащены	
-	pop ds	
+	pop DS	
 ;>!!!
 
 ; заменим написание символа на кypсив
-	mov cx, 1
-	mov dh, 0
-	mov dl, char
-	lea bp, symbol
-	call changefont
+	mov CX, 1
+	mov DH, 0
+	mov DL, charToCursiveIndex
+	lea BP, cursiveSymbol
+	call changeFont
+	jmp _exitSetCursive
 	
-; ну и 30 раз выведем наше творение
-	mov cx, 30
-	mov ah, 02
-	mov dl, char
-mloop:
-	int 21h
-	loop mloop
-;
-; пауза
-	mov ah, 07
-	int 21h
-;
-; веpнем пpошлyю бyквy
-	mov cx, 1
-	mov dh, 0
-	mov dl, char
-	lea bp, stored_symbol
-	call changefont
+_restoreSymbol:	
+; если флаг равен 0, выполняем замену курсивного символа на старый вариант
 
-; пауза
-	mov ah, 07
-	int 21h
-; выход
-	mov ax, 4c00h
-	int 21h
-
+	mov CX, 1
+	mov DH, 0
+	mov DL, charToCursiveIndex
+	lea bp, savedSymbol
+	call changeFont
+	
+_exitSetCursive:
+	ret
+setCursive endp	
+	
+	
 ; *** входные данные
 ; dl = номер символа для замены
-; cx = Кол-во символов заменяемых изображений символов
-; (начиная с символа указанного в dx)
-; es:bp = адрес таблицы
+; CX = Кол-во символов заменяемых изображений символов
+; (начиная с символа указанного в DX)
+; ES:bp = адрес таблицы
 ;
 ; *** описание работы процедуры
 ; Происходит вызов int 10h (видеосервис)
@@ -136,16 +123,16 @@ mloop:
 ; Изменению подвергнутся все символы, находящиеся на экране,
 ; то есть если изображение заменено, старый вариант нигде уже не проявится
 
-changefont proc
-	push ax
-	push bx
-	mov ax, 1100h
-	mov bx, 1000h
+changeFont proc
+	push AX
+	push BX
+	mov AX, 1100h
+	mov BX, 1000h
 	int 10h
-	pop ax
-	pop bx
+	pop AX
+	pop BX
 	ret
-changefont endp
+changeFont endp
 
 ; *** входные данные
 ; bh - тип возвращаемой символьной таблицы
@@ -171,22 +158,47 @@ changefont endp
 ; но это не 100% инфа
 ;
 ; *** результат
-; в es:bp находится таблица символов (полная)
-; в cx находится байт на символ
+; в ES:bp находится таблица символов (полная)
+; в CX находится байт на символ
 ; в dl количество экранных строк
 ; ВАЖНО! Происходит сдвиг регистра ES
 ; ( ES становится равным C000h )
 
-savefont proc
-	push ax
-	push bx
-	mov ax, 1130h
-	mov bx, 0600h
+saveFont proc
+	push AX
+	push BX
+	mov AX, 1130h
+	mov BX, 0600h
 	int 10h
-	pop ax
-	pop bx
+	pop AX
+	pop BX
 	ret
-savefont endp
+saveFont endp
 
-code ends
+; от верхней строки, до нижней
+cursiveSymbol DB 00000000b
+       DB 00000000b
+       DB 00000000b
+       DB 00111110b
+       DB 00111111b
+       DB 00110011b
+       DB 01100110b
+       DB 01100110b
+       DB 01111100b
+       DB 11000110b
+       DB 11000110b
+       DB 11000110b
+       DB 11111100b
+       DB 00000000b
+       DB 00000000b
+       DB 00000000b
+	
+; символ для замены	
+charToCursiveIndex DB 'В'
+; переменная для хранения старого символа
+savedSymbol DB 16 dup(0ffh)
+cursiveEnabled DB 0
+true 						equ	0ffh							; константа истинности
+
+code enDS
 end start
