@@ -33,31 +33,28 @@ code segment	'code'
 	
 	signaturePrintingEnabled 		DB	0							; флаг функции вывода информации об авторе
 	cursiveEnabled 				DB	0							; флаг перевода символа в курсив
+
+	cursiveSymbol 				DB 00000000b						;@ символ, составленный из единичек (его курсивный вариант)
+								DB 00000000b
+								DB 00000000b
+								DB 00111110b
+								DB 00111111b
+								DB 00110011b
+								DB 01100110b
+								DB 01100110b
+								DB 01111100b
+								DB 11000110b
+								DB 11000110b
+								DB 11000110b
+								DB 11111100b
+								DB 00000000b
+								DB 00000000b
+								DB 00000000b
 	
-	;@ символ, составленный из единичек (его курсивный вариант)
-	cursiveSymbol DB 00000000b
-       DB 00000000b
-       DB 00000000b
-       DB 00111110b
-       DB 00111111b
-       DB 00110011b
-       DB 01100110b
-       DB 01100110b
-       DB 01111100b
-       DB 11000110b
-       DB 11000110b
-       DB 11000110b
-       DB 11111100b
-       DB 00000000b
-       DB 00000000b
-       DB 00000000b
+	charToCursiveIndex 			DB 'B'							;@ символ для замены
+	savedSymbol 					DB 16 dup(0FFh)					; переменная для хранения старого символа
 	
-	;@ символ для замены	
-	charToCursiveIndex DB 'В'
-	; переменная для хранения старого символа
-	savedSymbol DB 16 dup(0ffh)
-	
-	true 						equ	0ffh							; константа истинности
+	true 						equ	0FFh							; константа истинности
 	old_int9hOffset 				DW	?							; адрес старого обработчика int 9h
 	old_int9hSegment 				DW	?							; сегмент старого обработчика int 9h
 	old_int1ChOffset 				DW	?							; адрес старого обработчика int 1Ch
