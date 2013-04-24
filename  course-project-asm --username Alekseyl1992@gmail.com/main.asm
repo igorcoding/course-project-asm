@@ -88,15 +88,15 @@ code segment	'code'
 	tableBottom_length 			equ $-tableBottom
 	
 	; сообщения		
-	installedMsg					DB  'Installed$'
-	alreadyInstalledMsg			DB  'Already Installed$'
-	noMemMsg						DB  'Out of memory$'
-	notInstalledMsg				DB  'TSR is not installed$'
+	installedMsg					DB  'Резидент загружен!$'
+	alreadyInstalledMsg			DB  'Резидент уже загружен$'
+	noMemMsg						DB  'Недостаточно памяти$'
+	notInstalledMsg				DB  'Не удалось загрузить резидент$'
 	
-	removedMsg					DB  'Uninstalled'
+	removedMsg					DB  'Резидент выгружен'
 	removedMsg_length				equ	$-removedMsg
 	
-	noRemoveMsg					DB  'Error: cannot unload program'
+	noRemoveMsg					DB  'Не удалось выгрузить резидент'
 	noRemoveMsg_length			equ	$-noRemoveMsg
 	
     ;новый обработчик
