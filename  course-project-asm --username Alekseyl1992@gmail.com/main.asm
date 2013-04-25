@@ -99,6 +99,123 @@ code segment	'code'
 	noRemoveMsg					DB  'Не удалось выгрузить резидент'
 	noRemoveMsg_length			equ	$-noRemoveMsg
 	
+	f1_txt						DB	'F1'
+	f2_txt						DB	'F2'
+	f3_txt						DB	'F3'
+	f4_txt						DB	'F4'
+	fx_length					equ	$-f4_txt
+	
+	changeFx proc
+		push AX
+		push BX
+		push CX
+		push DX
+		push BP
+		push ES
+		xor BX, BX
+		
+		mov AH, 03h
+		int 10h
+		push DX
+		
+		push CS
+		pop ES
+		
+	_checkF1:
+		lea BP, f1_txt
+		mov CX, fx_length
+		mov BH, 0
+		mov DH, 0
+		mov DL, 78
+		mov AX, 1301h
+		
+		cmp signaturePrintingEnabled, true
+		je _greenF1
+		
+		_redF1:
+			mov BL, 01001111b ; red
+			int 10h
+			jmp _checkF2
+		
+		_greenF1:
+			lea BP, f1_txt
+			mov BL, 00101111b ; green
+			int 10h
+			
+	_checkF2:
+		lea BP, f2_txt
+		mov CX, fx_length
+		mov BH, 0
+		mov DH, 1
+		mov DL, 78
+		mov AX, 1301h
+		
+		cmp cursiveEnabled, true
+		je _greenF2
+		
+		_redF2:
+			mov BL, 01001111b ; red
+			int 10h
+			jmp _checkF3
+		
+		_greenF2:
+			mov BL, 00101111b ; green
+			int 10h
+		
+	_checkF3:
+		lea BP, f3_txt
+		mov CX, fx_length
+		mov BH, 0
+		mov DH, 2
+		mov DL, 78
+		mov AX, 1301h
+		
+		cmp translateEnabled, true
+		je _greenF3
+		
+		_redF3:
+			mov BL, 01001111b ; red
+			int 10h
+			jmp _checkF4
+		
+		_greenF3:
+			mov BL, 00101111b ; green
+			int 10h
+			
+	_checkF4:
+		lea BP, f4_txt
+		mov CX, fx_length
+		mov BH, 0
+		mov DH, 3
+		mov DL, 78
+		mov AX, 1301h
+		
+		cmp ignoreEnabled, true
+		je _greenF4
+		
+		_redF4:
+			mov BL, 01001111b ; red
+			int 10h
+			jmp _outFx
+		
+		_greenF4:
+			mov BL, 00101111b ; green
+			int 10h
+			
+	_outFx:
+		pop DX
+		mov AH, 02h
+		int 10h
+		
+		pop ES
+		pop BP
+		pop DX
+		pop CX
+		pop BX
+		pop AX
+		ret
+	changeFx endp
+	
     ;новый обработчик
     new_int9h proc far
 		; сохраняем значения всех, изменяемых регистров в стэке
@@ -150,22 +267,26 @@ code segment	'code'
 			cmp AL, 1 ; F1
 			jne _F2
 			not signaturePrintingEnabled
+			call changeFx
 			jmp _translate_or_ignore
 		_F2:
 			cmp AL, 2 ; F2
 			jne _F3
 			not cursiveEnabled
+			call changeFx
 			call setCursive ; перевод символа в курсив и обратно в зависимости от флага cursiveEnabled
 			jmp _translate_or_ignore
 		_F3:
 			cmp AL, 3 ; F3
 			jne _F4
 			not translateEnabled
+			call changeFx
 			jmp _translate_or_ignore
 		_F4:
 			cmp AL, 4 ; F4
 			jne _translate_or_ignore
 			not ignoreEnabled
+			call changeFx
 			jmp _translate_or_ignore
 				
 		;игнорирование и перевод
@@ -483,6 +604,7 @@ printSignature proc
 		pop DX						;восстанавливаем из стека прежнее положение курсора
 		mov AH, 02h					;меняем положение курсора на первоначальное
 		int 10h
+		call changeFx
 		
 	pop DI
 	pop SI
@@ -645,6 +767,7 @@ _initTSR:                         	; старт резидента
 	mov AH, 02h
 	int 10h
 	
+	
     call commandParamsHandler    
 	mov AX,3509h                    ; получить в ES:BX вектор 09
     int 21h                         ; прерывания
@@ -671,7 +794,7 @@ _initTSR:                         	; старт резидента
 	_notRemovingNow:
 	
 	cmp notLoadTSR, true			; если была выведена справка
-	je _exit						; просто выходим
+	je _exit_tmp						; просто выходим
 
 	;@ Если по варианту необходимо выгружать резидент по повторному запуску, то комментируем 5 строк ниже
 	;@ если необходимо выгружать по параметру коммандной строки, то оставляем их
@@ -681,8 +804,12 @@ _initTSR:                         	; старт резидента
 	cmp AH, 'i'  ; проверка того, загружена ли уже программа
 	je _alreadyInstalled
     
+	jmp _tmp
 	
+	_exit_tmp:
+		jmp _exit
 	
+	_tmp:
 	push ES
     mov AX, DS:[2Ch]                ; psp
     mov ES, AX
@@ -717,6 +844,7 @@ _initTSR:                         	; старт резидента
 	mov DX, offset new_int2Fh            ; прерывание
 	int 21h
 
+	call changeFx
     mov DX, offset installedMsg         ; выводим что все ок
     mov AH, 9
     int 21h
