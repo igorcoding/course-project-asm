@@ -69,11 +69,11 @@ code segment	'code'
 	printPos						DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
 	
 	;@ заменить на собственные данные. формирование таблицы идет по строке большей длины (1я строка).
-	signatureLine1				DB	179, 'Игорь Латкин', 179
+	signatureLine1				DB	179, 'Игорь Латкин, Алексей Леонтьев, Назаров Константин', 179
 	Line1_length 					equ	$-signatureLine1
-	signatureLine2				DB	179, 'ИУ5-44      ', 179
+	signatureLine2				DB	179, 'ИУ5-44                                            ', 179
 	Line2_length 					equ	$-signatureLine2
-	signatureLine3				DB	179, 'Вариант #0  ', 179
+	signatureLine3				DB	179, 'Вариант #0                                        ', 179
 	Line3_length 					equ	$-signatureLine3
 	helpMsg						DB	'main.com [/?] [/u]', 10, 13
 								DB	'[/?]    вывод данной справки', 10, 13
@@ -85,7 +85,7 @@ code segment	'code'
 	tableTop						DB	218, Line1_length-2 dup (196), 191
 	tableTop_length 				equ	$-tableTop
 	tableBottom					DB	192, Line1_length-2 dup (196), 217
-	tableBottom_length 			equ $-tableBottom
+	tableBottom_length 			equ  $-tableBottom
 	
 	; сообщения		
 	installedMsg					DB  'Резидент загружен!$'
@@ -529,17 +529,17 @@ printSignature proc
 	;все числа подобраны на глаз...
 	_printTop:
 		mov DH, 0
-		mov DL, 1Fh
+		mov DL, 15
 		jmp _actualPrint
 	
 	_printCenter:
 		mov DH, 9
-		mov DL, 1Fh
+		mov DL, 15
 		jmp _actualPrint
 		
 	_printBottom:
 		mov DH, 19
-		mov DL, 1Fh
+		mov DL, 15
 		jmp _actualPrint
 		
 	_actualPrint:	
