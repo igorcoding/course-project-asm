@@ -69,7 +69,7 @@ code segment	'code'
 	printPos						DW	1 							;@ положение подписи на экране. 0 - верх, 1 - центр, 2 - низ
 	
 	;@ заменить на собственные данные. формирование таблицы идет по строке большей длины (1я строка).
-	signatureLine1				DB	179, 'Игорь Латкин, Алексей Леонтьев, Назаров Константин', 179
+	signatureLine1				DB	179, 'Игорь Латкин, Алексей Леонтьев, Константин Назаров', 179
 	Line1_length 					equ	$-signatureLine1
 	signatureLine2				DB	179, 'ИУ5-44                                            ', 179
 	Line2_length 					equ	$-signatureLine2
@@ -79,7 +79,7 @@ code segment	'code'
 								DB	'[/?]    вывод данной справки', 10, 13
 								DB	'[/u]    выгрузка резидента из памяти', 10, 13
 	helpMsg_length				equ  $-helpMsg
-	errorParamMsg					DB	'some error on param', 10, 13
+	errorParamMsg					DB	'Ошибка параметров коммандной строки', 10, 13
 	errorParamMsg_length			equ	$-errorParamMsg
 	
 	tableTop						DB	218, Line1_length-2 dup (196), 191
