@@ -895,7 +895,7 @@ commandParamsParser proc
 		cmp AX, 'u/'
 		je _finishTSR
 		
-		;cmp AL, '/'
+		;cmp AH, '/'
 		;je _errorParam
 		
 		jmp _exitHelp
