@@ -768,14 +768,14 @@ _initTSR:                         	; старт резидента
 	int 10h
 	
 	
-    call commandParamsHandler    
+    call commandParamsParser    
 	mov AX,3509h                    ; получить в ES:BX вектор 09
     int 21h                         ; прерывания
 	
 	;@ === Удаление резидента из памяти ===
 	;@ Если по варианту необходимо выгружать резидент по повторному запуску приложений, 
 	;@ нужно закомментировать следующие 3 строки, а также
-	;@ содержимое метки _finishTSR ф-ии commandParamsHandler, но не саму метку!
+	;@ содержимое метки _finishTSR ф-ии commandParamsParser, но не саму метку!
 	cmp unloadTSR, true
 	je _removingOnParameter
 	jmp _notRemovingNow
@@ -870,7 +870,7 @@ _exit:                               ; выход
 
 ;=== Процедура проверки параметров ком. строки ===;
 ;===
-commandParamsHandler proc
+commandParamsParser proc
 	push CS
 	pop ES
 	mov unloadTSR, 0
@@ -935,7 +935,7 @@ commandParamsHandler proc
 		;конец вывода строки
 	_exitHelp:
 	ret
-commandParamsHandler endp
+commandParamsParser endp
 
 code ends
 end _start
