@@ -75,7 +75,7 @@ code segment	'code'
 	Line2_length 					equ	$-signatureLine2
 	signatureLine3				DB	179, 'Вариант #0                                        ', 179
 	Line3_length 					equ	$-signatureLine3
-	helpMsg						DB	'main.com [/?] [/u]', 10, 13
+	helpMsg						DB	'tsr.com [/?] [/u]', 10, 13
 								DB	'[/?]    вывод данной справки', 10, 13
 								DB	'[/u]    выгрузка резидента из памяти', 10, 13
 	helpMsg_length				equ  $-helpMsg
